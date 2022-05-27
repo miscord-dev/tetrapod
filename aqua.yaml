@@ -1,0 +1,14 @@
+---
+# aqua - Declarative CLI Version Manager
+# https://aquaproj.github.io/
+registries:
+- type: standard
+  ref: v2.16.0 # renovate: depName=aquaproj/aqua-registry
+- name: local
+  type: local
+  path: aqua/registry.yml
+
+packages:
+- name: protoc
+  registry: local
+  version: v3.20.1
