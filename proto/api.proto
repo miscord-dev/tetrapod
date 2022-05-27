@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+option go_package = "github.com/miscord-dev/toxfu/proto";
+package proto;
+
+message IPPrefix {
+    string address = 1;
+    int32 bits = 2;
+}
+
+message Node {
+    int64 id = 1;
+    string public_key = 2;
+    string public_disco_key = 3;
+    repeated string endpoints = 4;
+    repeated IPPrefix addresses = 5;
+    repeated IPPrefix advertised_prefixes = 6;
+}
+
+message NodeRefreshRequest {
+    string public_key = 1;
+    string public_disco_key = 2;
+    repeated IPPrefix advertised_prefixes = 3;
+}
+
+message NodeRefreshResponse {
+    int64 node_id = 1;
+    string stun_server = 2;
+    repeated Node peers = 3;
+}
+
+// The api for nodes
+service NodeAPI {
+    rpc Refresh(stream NodeRefreshRequest) returns (stream NodeRefreshResponse);
+}
