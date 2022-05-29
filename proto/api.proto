@@ -24,7 +24,7 @@ message NodeRefreshRequest {
 }
 
 message NodeRefreshResponse {
-    int64 node_id = 1;
+    Node self_node = 1;
     string stun_server = 2;
     repeated Node peers = 3;
 }

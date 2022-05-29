@@ -2,16 +2,17 @@ package proto
 
 import (
 	"fmt"
+	"strconv"
 
 	"inet.af/netaddr"
 	"tailscale.com/tailcfg"
 )
 
-func IPPrefixToNetaddr(prefix IPPrefix) (netaddr.IPPrefix, error) {
+func (prefix *IPPrefix) Netaddr() (netaddr.IPPrefix, error) {
 	ip, err := netaddr.ParseIP(prefix.GetAddress())
 
 	if err != nil {
-		return netaddr.IPPrefix{}, fmt.Errorf("failed to parse %s: %w", prefix, err)
+		return netaddr.IPPrefix{}, fmt.Errorf("failed to parse %s: %w", prefix.String(), err)
 	}
 
 	return netaddr.IPPrefixFrom(ip, uint8(prefix.GetBits())), nil
@@ -24,7 +25,7 @@ func IPPrefixiesToNetaddrs(prefixies []*IPPrefix) ([]netaddr.IPPrefix, error) {
 		if prefix == nil {
 			continue
 		}
-		np, err := IPPrefixToNetaddr(*prefix)
+		np, err := prefix.Netaddr()
 
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse %dth: %w", i, err)
@@ -36,7 +37,7 @@ func IPPrefixiesToNetaddrs(prefixies []*IPPrefix) ([]netaddr.IPPrefix, error) {
 	return results, nil
 }
 
-func NodeToTailcfgNode(n *Node) (*tailcfg.Node, error) {
+func (n *Node) TailcfgNode() (*tailcfg.Node, error) {
 	addrs, err := IPPrefixiesToNetaddrs(n.GetAddresses())
 
 	if err != nil {
@@ -49,8 +50,11 @@ func NodeToTailcfgNode(n *Node) (*tailcfg.Node, error) {
 		return nil, fmt.Errorf("failed to parse advertised prefixes: %w", err)
 	}
 
+	idStr := strconv.FormatInt(n.Id, 10)
 	tn := &tailcfg.Node{
 		ID:         tailcfg.NodeID(n.GetId()),
+		StableID:   tailcfg.StableNodeID(idStr),
+		Name:       idStr,
 		Addresses:  addrs,
 		AllowedIPs: advertised,
 		Endpoints:  n.GetEndpoints(),

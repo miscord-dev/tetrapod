@@ -21,8 +21,8 @@ var (
 	ErrConnectionNotEstablished = fmt.Errorf("connection is not established")
 )
 
-// SignalClient is a client for the signalling server.
-type SignalClient interface {
+// Client is a client for the signalling server.
+type Client interface {
 	// Start starts the client.
 	Start()
 
@@ -58,7 +58,7 @@ type signalClient struct {
 }
 
 // New creates a new SignalClient.
-func New(ctx context.Context, target string, logger logger.Logf) (SignalClient, error) {
+func New(ctx context.Context, target string, logger logger.Logf) (Client, error) {
 	conn, err := grpc.DialContext(
 		ctx,
 		target,
@@ -76,7 +76,7 @@ func New(ctx context.Context, target string, logger logger.Logf) (SignalClient, 
 	return new(conn, proto.NewNodeAPIClient(conn), logger), nil
 }
 
-func new(conn io.Closer, client proto.NodeAPIClient, logger logger.Logf) SignalClient {
+func new(conn io.Closer, client proto.NodeAPIClient, logger logger.Logf) Client {
 	c, cancel := context.WithCancel(context.Background())
 
 	return &signalClient{
