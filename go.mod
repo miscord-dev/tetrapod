@@ -2,7 +2,15 @@ module github.com/miscord-dev/toxfu
 
 go 1.18
 
-require tailscale.com v1.24.2
+require (
+	github.com/cenkalti/backoff/v4 v4.1.3
+	github.com/golang/mock v1.6.0
+	github.com/hashicorp/go-envparse v0.0.0-20200406174449-d9cfd743a15e
+	google.golang.org/grpc v1.46.2
+	google.golang.org/protobuf v1.28.0
+	inet.af/netaddr v0.0.0-20211027220019-c74959edd3b6
+	tailscale.com v1.24.2
+)
 
 require (
 	github.com/akutz/memconn v0.1.0 // indirect
@@ -11,7 +19,6 @@ require (
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/godbus/dbus/v5 v5.0.6 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/btree v1.0.1 // indirect
 	github.com/google/go-cmp v0.5.7 // indirect
@@ -45,9 +52,6 @@ require (
 	golang.zx2c4.com/wireguard v0.0.0-20220317000134-95b48cdb3961 // indirect
 	golang.zx2c4.com/wireguard/windows v0.4.10 // indirect
 	google.golang.org/genproto v0.0.0-20210722135532-667f2b7c528f // indirect
-	google.golang.org/grpc v1.46.2 // indirect
-	google.golang.org/protobuf v1.28.0 // indirect
 	gvisor.dev/gvisor v0.0.0-20220407223209-21871174d445 // indirect
-	inet.af/netaddr v0.0.0-20211027220019-c74959edd3b6 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 )

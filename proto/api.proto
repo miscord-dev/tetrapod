@@ -15,12 +15,20 @@ message Node {
     repeated string endpoints = 4;
     repeated IPPrefix addresses = 5;
     repeated IPPrefix advertised_prefixes = 6;
+    NodeAttribute attribute = 7;
+}
+
+message NodeAttribute {
+    string host_name = 1;
+    string os = 2;
+    string goos = 3;
+    string goarch = 4;
 }
 
 message NodeRefreshRequest {
     string public_key = 1;
     string public_disco_key = 2;
-    repeated IPPrefix advertised_prefixes = 3;
+    NodeAttribute attribute = 3;
 }
 
 message NodeRefreshResponse {

@@ -6,6 +6,7 @@ import (
 
 	"inet.af/netaddr"
 	"tailscale.com/tailcfg"
+	"tailscale.com/types/key"
 )
 
 func (prefix *IPPrefix) Netaddr() (netaddr.IPPrefix, error) {
@@ -51,13 +52,18 @@ func (n *Node) TailcfgNode() (*tailcfg.Node, error) {
 	}
 
 	idStr := strconv.FormatInt(n.Id, 10)
+	online := true
 	tn := &tailcfg.Node{
-		ID:         tailcfg.NodeID(n.GetId()),
-		StableID:   tailcfg.StableNodeID(idStr),
-		Name:       idStr,
-		Addresses:  addrs,
-		AllowedIPs: advertised,
-		Endpoints:  n.GetEndpoints(),
+		ID:                tailcfg.NodeID(n.GetId()),
+		StableID:          tailcfg.StableNodeID(idStr),
+		Name:              idStr,
+		Addresses:         addrs,
+		AllowedIPs:        advertised,
+		PrimaryRoutes:     advertised,
+		Endpoints:         n.GetEndpoints(),
+		Online:            &online,
+		KeepAlive:         true,
+		MachineAuthorized: true,
 	}
 	if err := tn.Key.UnmarshalText([]byte(n.GetPublicKey())); err != nil {
 		return nil, fmt.Errorf("failed to parse public key: %w", err)
@@ -67,4 +73,18 @@ func (n *Node) TailcfgNode() (*tailcfg.Node, error) {
 	}
 
 	return tn, nil
+}
+
+// MarshalNodePublic marshals a NodePublic to a string.
+func MarshalNodePublic(key key.NodePublic) string {
+	b, _ := key.MarshalText()
+
+	return string(b)
+}
+
+// MarshalNodePrivate marshals a NodePrivate to a string.
+func MarshalDiscoPublic(key key.DiscoPublic) string {
+	b, _ := key.MarshalText()
+
+	return string(b)
 }
