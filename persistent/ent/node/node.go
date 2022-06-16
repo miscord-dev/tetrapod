@@ -25,10 +25,30 @@ const (
 	FieldGoarch = "goarch"
 	// FieldLastUpdatedAt holds the string denoting the last_updated_at field in the database.
 	FieldLastUpdatedAt = "last_updated_at"
+	// FieldEndpoints holds the string denoting the endpoints field in the database.
+	FieldEndpoints = "endpoints"
 	// FieldState holds the string denoting the state field in the database.
 	FieldState = "state"
+	// EdgeRoutes holds the string denoting the routes edge name in mutations.
+	EdgeRoutes = "routes"
+	// EdgeAddresses holds the string denoting the addresses edge name in mutations.
+	EdgeAddresses = "addresses"
 	// Table holds the table name of the node in the database.
 	Table = "nodes"
+	// RoutesTable is the table that holds the routes relation/edge.
+	RoutesTable = "routes"
+	// RoutesInverseTable is the table name for the Route entity.
+	// It exists in this package in order to avoid circular dependency with the "route" package.
+	RoutesInverseTable = "routes"
+	// RoutesColumn is the table column denoting the routes relation/edge.
+	RoutesColumn = "node_routes"
+	// AddressesTable is the table that holds the addresses relation/edge.
+	AddressesTable = "addresses"
+	// AddressesInverseTable is the table name for the Address entity.
+	// It exists in this package in order to avoid circular dependency with the "address" package.
+	AddressesInverseTable = "addresses"
+	// AddressesColumn is the table column denoting the addresses relation/edge.
+	AddressesColumn = "node_addresses"
 )
 
 // Columns holds all SQL columns for node fields.
@@ -41,6 +61,7 @@ var Columns = []string{
 	FieldGoos,
 	FieldGoarch,
 	FieldLastUpdatedAt,
+	FieldEndpoints,
 	FieldState,
 }
 

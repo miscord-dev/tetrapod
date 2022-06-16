@@ -6,12 +6,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/miscord-dev/toxfu/persistent/ent/address"
 	"github.com/miscord-dev/toxfu/persistent/ent/node"
 	"github.com/miscord-dev/toxfu/persistent/ent/predicate"
+	"github.com/miscord-dev/toxfu/persistent/ent/route"
 )
 
 // NodeUpdate is the builder for updating Node entities.
@@ -64,8 +67,14 @@ func (nu *NodeUpdate) SetGoarch(s string) *NodeUpdate {
 }
 
 // SetLastUpdatedAt sets the "last_updated_at" field.
-func (nu *NodeUpdate) SetLastUpdatedAt(s string) *NodeUpdate {
-	nu.mutation.SetLastUpdatedAt(s)
+func (nu *NodeUpdate) SetLastUpdatedAt(t time.Time) *NodeUpdate {
+	nu.mutation.SetLastUpdatedAt(t)
+	return nu
+}
+
+// SetEndpoints sets the "endpoints" field.
+func (nu *NodeUpdate) SetEndpoints(s []string) *NodeUpdate {
+	nu.mutation.SetEndpoints(s)
 	return nu
 }
 
@@ -75,9 +84,81 @@ func (nu *NodeUpdate) SetState(n node.State) *NodeUpdate {
 	return nu
 }
 
+// AddRouteIDs adds the "routes" edge to the Route entity by IDs.
+func (nu *NodeUpdate) AddRouteIDs(ids ...int64) *NodeUpdate {
+	nu.mutation.AddRouteIDs(ids...)
+	return nu
+}
+
+// AddRoutes adds the "routes" edges to the Route entity.
+func (nu *NodeUpdate) AddRoutes(r ...*Route) *NodeUpdate {
+	ids := make([]int64, len(r))
+	for i := range r {
+		ids[i] = r[i].ID
+	}
+	return nu.AddRouteIDs(ids...)
+}
+
+// AddAddressIDs adds the "addresses" edge to the Address entity by IDs.
+func (nu *NodeUpdate) AddAddressIDs(ids ...int64) *NodeUpdate {
+	nu.mutation.AddAddressIDs(ids...)
+	return nu
+}
+
+// AddAddresses adds the "addresses" edges to the Address entity.
+func (nu *NodeUpdate) AddAddresses(a ...*Address) *NodeUpdate {
+	ids := make([]int64, len(a))
+	for i := range a {
+		ids[i] = a[i].ID
+	}
+	return nu.AddAddressIDs(ids...)
+}
+
 // Mutation returns the NodeMutation object of the builder.
 func (nu *NodeUpdate) Mutation() *NodeMutation {
 	return nu.mutation
+}
+
+// ClearRoutes clears all "routes" edges to the Route entity.
+func (nu *NodeUpdate) ClearRoutes() *NodeUpdate {
+	nu.mutation.ClearRoutes()
+	return nu
+}
+
+// RemoveRouteIDs removes the "routes" edge to Route entities by IDs.
+func (nu *NodeUpdate) RemoveRouteIDs(ids ...int64) *NodeUpdate {
+	nu.mutation.RemoveRouteIDs(ids...)
+	return nu
+}
+
+// RemoveRoutes removes "routes" edges to Route entities.
+func (nu *NodeUpdate) RemoveRoutes(r ...*Route) *NodeUpdate {
+	ids := make([]int64, len(r))
+	for i := range r {
+		ids[i] = r[i].ID
+	}
+	return nu.RemoveRouteIDs(ids...)
+}
+
+// ClearAddresses clears all "addresses" edges to the Address entity.
+func (nu *NodeUpdate) ClearAddresses() *NodeUpdate {
+	nu.mutation.ClearAddresses()
+	return nu
+}
+
+// RemoveAddressIDs removes the "addresses" edge to Address entities by IDs.
+func (nu *NodeUpdate) RemoveAddressIDs(ids ...int64) *NodeUpdate {
+	nu.mutation.RemoveAddressIDs(ids...)
+	return nu
+}
+
+// RemoveAddresses removes "addresses" edges to Address entities.
+func (nu *NodeUpdate) RemoveAddresses(a ...*Address) *NodeUpdate {
+	ids := make([]int64, len(a))
+	for i := range a {
+		ids[i] = a[i].ID
+	}
+	return nu.RemoveAddressIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -212,9 +293,16 @@ func (nu *NodeUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if value, ok := nu.mutation.LastUpdatedAt(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
+			Type:   field.TypeTime,
 			Value:  value,
 			Column: node.FieldLastUpdatedAt,
+		})
+	}
+	if value, ok := nu.mutation.Endpoints(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeJSON,
+			Value:  value,
+			Column: node.FieldEndpoints,
 		})
 	}
 	if value, ok := nu.mutation.State(); ok {
@@ -223,6 +311,114 @@ func (nu *NodeUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Value:  value,
 			Column: node.FieldState,
 		})
+	}
+	if nu.mutation.RoutesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   node.RoutesTable,
+			Columns: []string{node.RoutesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt64,
+					Column: route.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := nu.mutation.RemovedRoutesIDs(); len(nodes) > 0 && !nu.mutation.RoutesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   node.RoutesTable,
+			Columns: []string{node.RoutesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt64,
+					Column: route.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := nu.mutation.RoutesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   node.RoutesTable,
+			Columns: []string{node.RoutesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt64,
+					Column: route.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if nu.mutation.AddressesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   node.AddressesTable,
+			Columns: []string{node.AddressesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt64,
+					Column: address.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := nu.mutation.RemovedAddressesIDs(); len(nodes) > 0 && !nu.mutation.AddressesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   node.AddressesTable,
+			Columns: []string{node.AddressesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt64,
+					Column: address.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := nu.mutation.AddressesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   node.AddressesTable,
+			Columns: []string{node.AddressesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt64,
+					Column: address.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if n, err = sqlgraph.UpdateNodes(ctx, nu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -280,8 +476,14 @@ func (nuo *NodeUpdateOne) SetGoarch(s string) *NodeUpdateOne {
 }
 
 // SetLastUpdatedAt sets the "last_updated_at" field.
-func (nuo *NodeUpdateOne) SetLastUpdatedAt(s string) *NodeUpdateOne {
-	nuo.mutation.SetLastUpdatedAt(s)
+func (nuo *NodeUpdateOne) SetLastUpdatedAt(t time.Time) *NodeUpdateOne {
+	nuo.mutation.SetLastUpdatedAt(t)
+	return nuo
+}
+
+// SetEndpoints sets the "endpoints" field.
+func (nuo *NodeUpdateOne) SetEndpoints(s []string) *NodeUpdateOne {
+	nuo.mutation.SetEndpoints(s)
 	return nuo
 }
 
@@ -291,9 +493,81 @@ func (nuo *NodeUpdateOne) SetState(n node.State) *NodeUpdateOne {
 	return nuo
 }
 
+// AddRouteIDs adds the "routes" edge to the Route entity by IDs.
+func (nuo *NodeUpdateOne) AddRouteIDs(ids ...int64) *NodeUpdateOne {
+	nuo.mutation.AddRouteIDs(ids...)
+	return nuo
+}
+
+// AddRoutes adds the "routes" edges to the Route entity.
+func (nuo *NodeUpdateOne) AddRoutes(r ...*Route) *NodeUpdateOne {
+	ids := make([]int64, len(r))
+	for i := range r {
+		ids[i] = r[i].ID
+	}
+	return nuo.AddRouteIDs(ids...)
+}
+
+// AddAddressIDs adds the "addresses" edge to the Address entity by IDs.
+func (nuo *NodeUpdateOne) AddAddressIDs(ids ...int64) *NodeUpdateOne {
+	nuo.mutation.AddAddressIDs(ids...)
+	return nuo
+}
+
+// AddAddresses adds the "addresses" edges to the Address entity.
+func (nuo *NodeUpdateOne) AddAddresses(a ...*Address) *NodeUpdateOne {
+	ids := make([]int64, len(a))
+	for i := range a {
+		ids[i] = a[i].ID
+	}
+	return nuo.AddAddressIDs(ids...)
+}
+
 // Mutation returns the NodeMutation object of the builder.
 func (nuo *NodeUpdateOne) Mutation() *NodeMutation {
 	return nuo.mutation
+}
+
+// ClearRoutes clears all "routes" edges to the Route entity.
+func (nuo *NodeUpdateOne) ClearRoutes() *NodeUpdateOne {
+	nuo.mutation.ClearRoutes()
+	return nuo
+}
+
+// RemoveRouteIDs removes the "routes" edge to Route entities by IDs.
+func (nuo *NodeUpdateOne) RemoveRouteIDs(ids ...int64) *NodeUpdateOne {
+	nuo.mutation.RemoveRouteIDs(ids...)
+	return nuo
+}
+
+// RemoveRoutes removes "routes" edges to Route entities.
+func (nuo *NodeUpdateOne) RemoveRoutes(r ...*Route) *NodeUpdateOne {
+	ids := make([]int64, len(r))
+	for i := range r {
+		ids[i] = r[i].ID
+	}
+	return nuo.RemoveRouteIDs(ids...)
+}
+
+// ClearAddresses clears all "addresses" edges to the Address entity.
+func (nuo *NodeUpdateOne) ClearAddresses() *NodeUpdateOne {
+	nuo.mutation.ClearAddresses()
+	return nuo
+}
+
+// RemoveAddressIDs removes the "addresses" edge to Address entities by IDs.
+func (nuo *NodeUpdateOne) RemoveAddressIDs(ids ...int64) *NodeUpdateOne {
+	nuo.mutation.RemoveAddressIDs(ids...)
+	return nuo
+}
+
+// RemoveAddresses removes "addresses" edges to Address entities.
+func (nuo *NodeUpdateOne) RemoveAddresses(a ...*Address) *NodeUpdateOne {
+	ids := make([]int64, len(a))
+	for i := range a {
+		ids[i] = a[i].ID
+	}
+	return nuo.RemoveAddressIDs(ids...)
 }
 
 // Select allows selecting one or more fields (columns) of the returned entity.
@@ -452,9 +726,16 @@ func (nuo *NodeUpdateOne) sqlSave(ctx context.Context) (_node *Node, err error) 
 	}
 	if value, ok := nuo.mutation.LastUpdatedAt(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
+			Type:   field.TypeTime,
 			Value:  value,
 			Column: node.FieldLastUpdatedAt,
+		})
+	}
+	if value, ok := nuo.mutation.Endpoints(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeJSON,
+			Value:  value,
+			Column: node.FieldEndpoints,
 		})
 	}
 	if value, ok := nuo.mutation.State(); ok {
@@ -463,6 +744,114 @@ func (nuo *NodeUpdateOne) sqlSave(ctx context.Context) (_node *Node, err error) 
 			Value:  value,
 			Column: node.FieldState,
 		})
+	}
+	if nuo.mutation.RoutesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   node.RoutesTable,
+			Columns: []string{node.RoutesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt64,
+					Column: route.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := nuo.mutation.RemovedRoutesIDs(); len(nodes) > 0 && !nuo.mutation.RoutesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   node.RoutesTable,
+			Columns: []string{node.RoutesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt64,
+					Column: route.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := nuo.mutation.RoutesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   node.RoutesTable,
+			Columns: []string{node.RoutesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt64,
+					Column: route.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if nuo.mutation.AddressesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   node.AddressesTable,
+			Columns: []string{node.AddressesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt64,
+					Column: address.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := nuo.mutation.RemovedAddressesIDs(); len(nodes) > 0 && !nuo.mutation.AddressesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   node.AddressesTable,
+			Columns: []string{node.AddressesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt64,
+					Column: address.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := nuo.mutation.AddressesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   node.AddressesTable,
+			Columns: []string{node.AddressesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt64,
+					Column: address.FieldID,
+				},
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &Node{config: nuo.config}
 	_spec.Assign = _node.assignValues

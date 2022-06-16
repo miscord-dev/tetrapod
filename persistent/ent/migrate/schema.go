@@ -8,6 +8,26 @@ import (
 )
 
 var (
+	// AddressesColumns holds the columns for the "addresses" table.
+	AddressesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "addr", Type: field.TypeString, Size: 256},
+		{Name: "node_addresses", Type: field.TypeInt64, Nullable: true},
+	}
+	// AddressesTable holds the schema information for the "addresses" table.
+	AddressesTable = &schema.Table{
+		Name:       "addresses",
+		Columns:    AddressesColumns,
+		PrimaryKey: []*schema.Column{AddressesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "addresses_nodes_addresses",
+				Columns:    []*schema.Column{AddressesColumns[2]},
+				RefColumns: []*schema.Column{NodesColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+	}
 	// NodesColumns holds the columns for the "nodes" table.
 	NodesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
@@ -17,7 +37,8 @@ var (
 		{Name: "os", Type: field.TypeString},
 		{Name: "goos", Type: field.TypeString},
 		{Name: "goarch", Type: field.TypeString},
-		{Name: "last_updated_at", Type: field.TypeString},
+		{Name: "last_updated_at", Type: field.TypeTime},
+		{Name: "endpoints", Type: field.TypeJSON},
 		{Name: "state", Type: field.TypeEnum, Enums: []string{"online", "offline", "disabled"}},
 	}
 	// NodesTable holds the schema information for the "nodes" table.
@@ -26,11 +47,36 @@ var (
 		Columns:    NodesColumns,
 		PrimaryKey: []*schema.Column{NodesColumns[0]},
 	}
+	// RoutesColumns holds the columns for the "routes" table.
+	RoutesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "addr", Type: field.TypeString, Size: 256},
+		{Name: "bits", Type: field.TypeInt},
+		{Name: "node_routes", Type: field.TypeInt64, Nullable: true},
+	}
+	// RoutesTable holds the schema information for the "routes" table.
+	RoutesTable = &schema.Table{
+		Name:       "routes",
+		Columns:    RoutesColumns,
+		PrimaryKey: []*schema.Column{RoutesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "routes_nodes_routes",
+				Columns:    []*schema.Column{RoutesColumns[3]},
+				RefColumns: []*schema.Column{NodesColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		AddressesTable,
 		NodesTable,
+		RoutesTable,
 	}
 )
 
 func init() {
+	AddressesTable.ForeignKeys[0].RefTable = NodesTable
+	RoutesTable.ForeignKeys[0].RefTable = NodesTable
 }

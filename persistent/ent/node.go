@@ -3,8 +3,10 @@
 package ent
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"github.com/miscord-dev/toxfu/persistent/ent/node"
@@ -28,9 +30,43 @@ type Node struct {
 	// Goarch holds the value of the "goarch" field.
 	Goarch string `json:"goarch,omitempty"`
 	// LastUpdatedAt holds the value of the "last_updated_at" field.
-	LastUpdatedAt string `json:"last_updated_at,omitempty"`
+	LastUpdatedAt time.Time `json:"last_updated_at,omitempty"`
+	// Endpoints holds the value of the "endpoints" field.
+	Endpoints []string `json:"endpoints,omitempty"`
 	// State holds the value of the "state" field.
 	State node.State `json:"state,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the NodeQuery when eager-loading is set.
+	Edges NodeEdges `json:"edges"`
+}
+
+// NodeEdges holds the relations/edges for other nodes in the graph.
+type NodeEdges struct {
+	// Routes holds the value of the routes edge.
+	Routes []*Route `json:"routes,omitempty"`
+	// Addresses holds the value of the addresses edge.
+	Addresses []*Address `json:"addresses,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [2]bool
+}
+
+// RoutesOrErr returns the Routes value or an error if the edge
+// was not loaded in eager-loading.
+func (e NodeEdges) RoutesOrErr() ([]*Route, error) {
+	if e.loadedTypes[0] {
+		return e.Routes, nil
+	}
+	return nil, &NotLoadedError{edge: "routes"}
+}
+
+// AddressesOrErr returns the Addresses value or an error if the edge
+// was not loaded in eager-loading.
+func (e NodeEdges) AddressesOrErr() ([]*Address, error) {
+	if e.loadedTypes[1] {
+		return e.Addresses, nil
+	}
+	return nil, &NotLoadedError{edge: "addresses"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -38,10 +74,14 @@ func (*Node) scanValues(columns []string) ([]interface{}, error) {
 	values := make([]interface{}, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case node.FieldEndpoints:
+			values[i] = new([]byte)
 		case node.FieldID:
 			values[i] = new(sql.NullInt64)
-		case node.FieldPublicKey, node.FieldPublicDiscoKey, node.FieldHostName, node.FieldOs, node.FieldGoos, node.FieldGoarch, node.FieldLastUpdatedAt, node.FieldState:
+		case node.FieldPublicKey, node.FieldPublicDiscoKey, node.FieldHostName, node.FieldOs, node.FieldGoos, node.FieldGoarch, node.FieldState:
 			values[i] = new(sql.NullString)
+		case node.FieldLastUpdatedAt:
+			values[i] = new(sql.NullTime)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type Node", columns[i])
 		}
@@ -100,10 +140,18 @@ func (n *Node) assignValues(columns []string, values []interface{}) error {
 				n.Goarch = value.String
 			}
 		case node.FieldLastUpdatedAt:
-			if value, ok := values[i].(*sql.NullString); !ok {
+			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field last_updated_at", values[i])
 			} else if value.Valid {
-				n.LastUpdatedAt = value.String
+				n.LastUpdatedAt = value.Time
+			}
+		case node.FieldEndpoints:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field endpoints", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &n.Endpoints); err != nil {
+					return fmt.Errorf("unmarshal field endpoints: %w", err)
+				}
 			}
 		case node.FieldState:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -114,6 +162,16 @@ func (n *Node) assignValues(columns []string, values []interface{}) error {
 		}
 	}
 	return nil
+}
+
+// QueryRoutes queries the "routes" edge of the Node entity.
+func (n *Node) QueryRoutes() *RouteQuery {
+	return (&NodeClient{config: n.config}).QueryRoutes(n)
+}
+
+// QueryAddresses queries the "addresses" edge of the Node entity.
+func (n *Node) QueryAddresses() *AddressQuery {
+	return (&NodeClient{config: n.config}).QueryAddresses(n)
 }
 
 // Update returns a builder for updating this Node.
@@ -152,7 +210,9 @@ func (n *Node) String() string {
 	builder.WriteString(", goarch=")
 	builder.WriteString(n.Goarch)
 	builder.WriteString(", last_updated_at=")
-	builder.WriteString(n.LastUpdatedAt)
+	builder.WriteString(n.LastUpdatedAt.Format(time.ANSIC))
+	builder.WriteString(", endpoints=")
+	builder.WriteString(fmt.Sprintf("%v", n.Endpoints))
 	builder.WriteString(", state=")
 	builder.WriteString(fmt.Sprintf("%v", n.State))
 	builder.WriteByte(')')

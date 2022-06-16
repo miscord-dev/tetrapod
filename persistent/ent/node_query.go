@@ -4,15 +4,19 @@ package ent
 
 import (
 	"context"
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"math"
 
+	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/miscord-dev/toxfu/persistent/ent/address"
 	"github.com/miscord-dev/toxfu/persistent/ent/node"
 	"github.com/miscord-dev/toxfu/persistent/ent/predicate"
+	"github.com/miscord-dev/toxfu/persistent/ent/route"
 )
 
 // NodeQuery is the builder for querying Node entities.
@@ -24,6 +28,10 @@ type NodeQuery struct {
 	order      []OrderFunc
 	fields     []string
 	predicates []predicate.Node
+	// eager-loading edges.
+	withRoutes    *RouteQuery
+	withAddresses *AddressQuery
+	modifiers     []func(s *sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -58,6 +66,50 @@ func (nq *NodeQuery) Unique(unique bool) *NodeQuery {
 func (nq *NodeQuery) Order(o ...OrderFunc) *NodeQuery {
 	nq.order = append(nq.order, o...)
 	return nq
+}
+
+// QueryRoutes chains the current query on the "routes" edge.
+func (nq *NodeQuery) QueryRoutes() *RouteQuery {
+	query := &RouteQuery{config: nq.config}
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := nq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := nq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(node.Table, node.FieldID, selector),
+			sqlgraph.To(route.Table, route.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, node.RoutesTable, node.RoutesColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(nq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryAddresses chains the current query on the "addresses" edge.
+func (nq *NodeQuery) QueryAddresses() *AddressQuery {
+	query := &AddressQuery{config: nq.config}
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := nq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := nq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(node.Table, node.FieldID, selector),
+			sqlgraph.To(address.Table, address.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, node.AddressesTable, node.AddressesColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(nq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
 }
 
 // First returns the first Node entity from the query.
@@ -236,16 +288,40 @@ func (nq *NodeQuery) Clone() *NodeQuery {
 		return nil
 	}
 	return &NodeQuery{
-		config:     nq.config,
-		limit:      nq.limit,
-		offset:     nq.offset,
-		order:      append([]OrderFunc{}, nq.order...),
-		predicates: append([]predicate.Node{}, nq.predicates...),
+		config:        nq.config,
+		limit:         nq.limit,
+		offset:        nq.offset,
+		order:         append([]OrderFunc{}, nq.order...),
+		predicates:    append([]predicate.Node{}, nq.predicates...),
+		withRoutes:    nq.withRoutes.Clone(),
+		withAddresses: nq.withAddresses.Clone(),
 		// clone intermediate query.
 		sql:    nq.sql.Clone(),
 		path:   nq.path,
 		unique: nq.unique,
 	}
+}
+
+// WithRoutes tells the query-builder to eager-load the nodes that are connected to
+// the "routes" edge. The optional arguments are used to configure the query builder of the edge.
+func (nq *NodeQuery) WithRoutes(opts ...func(*RouteQuery)) *NodeQuery {
+	query := &RouteQuery{config: nq.config}
+	for _, opt := range opts {
+		opt(query)
+	}
+	nq.withRoutes = query
+	return nq
+}
+
+// WithAddresses tells the query-builder to eager-load the nodes that are connected to
+// the "addresses" edge. The optional arguments are used to configure the query builder of the edge.
+func (nq *NodeQuery) WithAddresses(opts ...func(*AddressQuery)) *NodeQuery {
+	query := &AddressQuery{config: nq.config}
+	for _, opt := range opts {
+		opt(query)
+	}
+	nq.withAddresses = query
+	return nq
 }
 
 // GroupBy is used to group vertices by one or more fields/columns.
@@ -311,8 +387,12 @@ func (nq *NodeQuery) prepareQuery(ctx context.Context) error {
 
 func (nq *NodeQuery) sqlAll(ctx context.Context) ([]*Node, error) {
 	var (
-		nodes = []*Node{}
-		_spec = nq.querySpec()
+		nodes       = []*Node{}
+		_spec       = nq.querySpec()
+		loadedTypes = [2]bool{
+			nq.withRoutes != nil,
+			nq.withAddresses != nil,
+		}
 	)
 	_spec.ScanValues = func(columns []string) ([]interface{}, error) {
 		node := &Node{config: nq.config}
@@ -324,7 +404,11 @@ func (nq *NodeQuery) sqlAll(ctx context.Context) ([]*Node, error) {
 			return fmt.Errorf("ent: Assign called without calling ScanValues")
 		}
 		node := nodes[len(nodes)-1]
+		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
+	}
+	if len(nq.modifiers) > 0 {
+		_spec.Modifiers = nq.modifiers
 	}
 	if err := sqlgraph.QueryNodes(ctx, nq.driver, _spec); err != nil {
 		return nil, err
@@ -332,11 +416,73 @@ func (nq *NodeQuery) sqlAll(ctx context.Context) ([]*Node, error) {
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
+
+	if query := nq.withRoutes; query != nil {
+		fks := make([]driver.Value, 0, len(nodes))
+		nodeids := make(map[int64]*Node)
+		for i := range nodes {
+			fks = append(fks, nodes[i].ID)
+			nodeids[nodes[i].ID] = nodes[i]
+			nodes[i].Edges.Routes = []*Route{}
+		}
+		query.withFKs = true
+		query.Where(predicate.Route(func(s *sql.Selector) {
+			s.Where(sql.InValues(node.RoutesColumn, fks...))
+		}))
+		neighbors, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, n := range neighbors {
+			fk := n.node_routes
+			if fk == nil {
+				return nil, fmt.Errorf(`foreign-key "node_routes" is nil for node %v`, n.ID)
+			}
+			node, ok := nodeids[*fk]
+			if !ok {
+				return nil, fmt.Errorf(`unexpected foreign-key "node_routes" returned %v for node %v`, *fk, n.ID)
+			}
+			node.Edges.Routes = append(node.Edges.Routes, n)
+		}
+	}
+
+	if query := nq.withAddresses; query != nil {
+		fks := make([]driver.Value, 0, len(nodes))
+		nodeids := make(map[int64]*Node)
+		for i := range nodes {
+			fks = append(fks, nodes[i].ID)
+			nodeids[nodes[i].ID] = nodes[i]
+			nodes[i].Edges.Addresses = []*Address{}
+		}
+		query.withFKs = true
+		query.Where(predicate.Address(func(s *sql.Selector) {
+			s.Where(sql.InValues(node.AddressesColumn, fks...))
+		}))
+		neighbors, err := query.All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, n := range neighbors {
+			fk := n.node_addresses
+			if fk == nil {
+				return nil, fmt.Errorf(`foreign-key "node_addresses" is nil for node %v`, n.ID)
+			}
+			node, ok := nodeids[*fk]
+			if !ok {
+				return nil, fmt.Errorf(`unexpected foreign-key "node_addresses" returned %v for node %v`, *fk, n.ID)
+			}
+			node.Edges.Addresses = append(node.Edges.Addresses, n)
+		}
+	}
+
 	return nodes, nil
 }
 
 func (nq *NodeQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := nq.querySpec()
+	if len(nq.modifiers) > 0 {
+		_spec.Modifiers = nq.modifiers
+	}
 	_spec.Node.Columns = nq.fields
 	if len(nq.fields) > 0 {
 		_spec.Unique = nq.unique != nil && *nq.unique
@@ -415,6 +561,9 @@ func (nq *NodeQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	if nq.unique != nil && *nq.unique {
 		selector.Distinct()
 	}
+	for _, m := range nq.modifiers {
+		m(selector)
+	}
 	for _, p := range nq.predicates {
 		p(selector)
 	}
@@ -430,6 +579,32 @@ func (nq *NodeQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// ForUpdate locks the selected rows against concurrent updates, and prevent them from being
+// updated, deleted or "selected ... for update" by other sessions, until the transaction is
+// either committed or rolled-back.
+func (nq *NodeQuery) ForUpdate(opts ...sql.LockOption) *NodeQuery {
+	if nq.driver.Dialect() == dialect.Postgres {
+		nq.Unique(false)
+	}
+	nq.modifiers = append(nq.modifiers, func(s *sql.Selector) {
+		s.ForUpdate(opts...)
+	})
+	return nq
+}
+
+// ForShare behaves similarly to ForUpdate, except that it acquires a shared mode lock
+// on any rows that are read. Other sessions can read the rows, but cannot modify them
+// until your transaction commits.
+func (nq *NodeQuery) ForShare(opts ...sql.LockOption) *NodeQuery {
+	if nq.driver.Dialect() == dialect.Postgres {
+		nq.Unique(false)
+	}
+	nq.modifiers = append(nq.modifiers, func(s *sql.Selector) {
+		s.ForShare(opts...)
+	})
+	return nq
 }
 
 // NodeGroupBy is the group-by builder for Node entities.

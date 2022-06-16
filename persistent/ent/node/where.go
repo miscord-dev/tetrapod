@@ -3,7 +3,10 @@
 package node
 
 import (
+	"time"
+
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/miscord-dev/toxfu/persistent/ent/predicate"
 )
 
@@ -133,7 +136,7 @@ func Goarch(v string) predicate.Node {
 }
 
 // LastUpdatedAt applies equality check predicate on the "last_updated_at" field. It's identical to LastUpdatedAtEQ.
-func LastUpdatedAt(v string) predicate.Node {
+func LastUpdatedAt(v time.Time) predicate.Node {
 	return predicate.Node(func(s *sql.Selector) {
 		s.Where(sql.EQ(s.C(FieldLastUpdatedAt), v))
 	})
@@ -806,21 +809,21 @@ func GoarchContainsFold(v string) predicate.Node {
 }
 
 // LastUpdatedAtEQ applies the EQ predicate on the "last_updated_at" field.
-func LastUpdatedAtEQ(v string) predicate.Node {
+func LastUpdatedAtEQ(v time.Time) predicate.Node {
 	return predicate.Node(func(s *sql.Selector) {
 		s.Where(sql.EQ(s.C(FieldLastUpdatedAt), v))
 	})
 }
 
 // LastUpdatedAtNEQ applies the NEQ predicate on the "last_updated_at" field.
-func LastUpdatedAtNEQ(v string) predicate.Node {
+func LastUpdatedAtNEQ(v time.Time) predicate.Node {
 	return predicate.Node(func(s *sql.Selector) {
 		s.Where(sql.NEQ(s.C(FieldLastUpdatedAt), v))
 	})
 }
 
 // LastUpdatedAtIn applies the In predicate on the "last_updated_at" field.
-func LastUpdatedAtIn(vs ...string) predicate.Node {
+func LastUpdatedAtIn(vs ...time.Time) predicate.Node {
 	v := make([]interface{}, len(vs))
 	for i := range v {
 		v[i] = vs[i]
@@ -837,7 +840,7 @@ func LastUpdatedAtIn(vs ...string) predicate.Node {
 }
 
 // LastUpdatedAtNotIn applies the NotIn predicate on the "last_updated_at" field.
-func LastUpdatedAtNotIn(vs ...string) predicate.Node {
+func LastUpdatedAtNotIn(vs ...time.Time) predicate.Node {
 	v := make([]interface{}, len(vs))
 	for i := range v {
 		v[i] = vs[i]
@@ -854,65 +857,30 @@ func LastUpdatedAtNotIn(vs ...string) predicate.Node {
 }
 
 // LastUpdatedAtGT applies the GT predicate on the "last_updated_at" field.
-func LastUpdatedAtGT(v string) predicate.Node {
+func LastUpdatedAtGT(v time.Time) predicate.Node {
 	return predicate.Node(func(s *sql.Selector) {
 		s.Where(sql.GT(s.C(FieldLastUpdatedAt), v))
 	})
 }
 
 // LastUpdatedAtGTE applies the GTE predicate on the "last_updated_at" field.
-func LastUpdatedAtGTE(v string) predicate.Node {
+func LastUpdatedAtGTE(v time.Time) predicate.Node {
 	return predicate.Node(func(s *sql.Selector) {
 		s.Where(sql.GTE(s.C(FieldLastUpdatedAt), v))
 	})
 }
 
 // LastUpdatedAtLT applies the LT predicate on the "last_updated_at" field.
-func LastUpdatedAtLT(v string) predicate.Node {
+func LastUpdatedAtLT(v time.Time) predicate.Node {
 	return predicate.Node(func(s *sql.Selector) {
 		s.Where(sql.LT(s.C(FieldLastUpdatedAt), v))
 	})
 }
 
 // LastUpdatedAtLTE applies the LTE predicate on the "last_updated_at" field.
-func LastUpdatedAtLTE(v string) predicate.Node {
+func LastUpdatedAtLTE(v time.Time) predicate.Node {
 	return predicate.Node(func(s *sql.Selector) {
 		s.Where(sql.LTE(s.C(FieldLastUpdatedAt), v))
-	})
-}
-
-// LastUpdatedAtContains applies the Contains predicate on the "last_updated_at" field.
-func LastUpdatedAtContains(v string) predicate.Node {
-	return predicate.Node(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldLastUpdatedAt), v))
-	})
-}
-
-// LastUpdatedAtHasPrefix applies the HasPrefix predicate on the "last_updated_at" field.
-func LastUpdatedAtHasPrefix(v string) predicate.Node {
-	return predicate.Node(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldLastUpdatedAt), v))
-	})
-}
-
-// LastUpdatedAtHasSuffix applies the HasSuffix predicate on the "last_updated_at" field.
-func LastUpdatedAtHasSuffix(v string) predicate.Node {
-	return predicate.Node(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldLastUpdatedAt), v))
-	})
-}
-
-// LastUpdatedAtEqualFold applies the EqualFold predicate on the "last_updated_at" field.
-func LastUpdatedAtEqualFold(v string) predicate.Node {
-	return predicate.Node(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldLastUpdatedAt), v))
-	})
-}
-
-// LastUpdatedAtContainsFold applies the ContainsFold predicate on the "last_updated_at" field.
-func LastUpdatedAtContainsFold(v string) predicate.Node {
-	return predicate.Node(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldLastUpdatedAt), v))
 	})
 }
 
@@ -961,6 +929,62 @@ func StateNotIn(vs ...State) predicate.Node {
 			return
 		}
 		s.Where(sql.NotIn(s.C(FieldState), v...))
+	})
+}
+
+// HasRoutes applies the HasEdge predicate on the "routes" edge.
+func HasRoutes() predicate.Node {
+	return predicate.Node(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.To(RoutesTable, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, RoutesTable, RoutesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasRoutesWith applies the HasEdge predicate on the "routes" edge with a given conditions (other predicates).
+func HasRoutesWith(preds ...predicate.Route) predicate.Node {
+	return predicate.Node(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.To(RoutesInverseTable, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, RoutesTable, RoutesColumn),
+		)
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasAddresses applies the HasEdge predicate on the "addresses" edge.
+func HasAddresses() predicate.Node {
+	return predicate.Node(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.To(AddressesTable, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, AddressesTable, AddressesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasAddressesWith applies the HasEdge predicate on the "addresses" edge with a given conditions (other predicates).
+func HasAddressesWith(preds ...predicate.Address) predicate.Node {
+	return predicate.Node(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.To(AddressesInverseTable, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, AddressesTable, AddressesColumn),
+		)
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
 	})
 }
 

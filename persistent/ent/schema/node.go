@@ -2,6 +2,7 @@ package schema
 
 import (
 	"entgo.io/ent"
+	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 )
 
@@ -20,12 +21,16 @@ func (Node) Fields() []ent.Field {
 		field.String("os"),
 		field.String("goos"),
 		field.String("goarch"),
-		field.String("last_updated_at"),
+		field.Time("last_updated_at"),
+		field.Strings("endpoints"),
 		field.Enum("state").Values("online", "offline", "disabled"),
 	}
 }
 
 // Edges of the Node.
 func (Node) Edges() []ent.Edge {
-	return nil
+	return []ent.Edge{
+		edge.To("routes", Route.Type),
+		edge.To("addresses", Address.Type),
+	}
 }

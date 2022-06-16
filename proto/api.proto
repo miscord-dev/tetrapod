@@ -28,7 +28,8 @@ message NodeAttribute {
 message NodeRefreshRequest {
     string public_key = 1;
     string public_disco_key = 2;
-    NodeAttribute attribute = 3;
+    repeated string endpoints = 3;
+    NodeAttribute attribute = 4;
 }
 
 message NodeRefreshResponse {
