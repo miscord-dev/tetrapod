@@ -6,7 +6,10 @@ require (
 	entgo.io/ent v0.10.1
 	github.com/cenkalti/backoff/v4 v4.1.3
 	github.com/golang/mock v1.6.0
+	github.com/google/go-cmp v0.5.8
 	github.com/hashicorp/go-envparse v0.0.0-20200406174449-d9cfd743a15e
+	github.com/mattn/go-sqlite3 v1.14.13
+	golang.org/x/exp v0.0.0-20220613132600-b0d781184e0d
 	google.golang.org/grpc v1.46.2
 	google.golang.org/protobuf v1.28.0
 	inet.af/netaddr v0.0.0-20211027220019-c74959edd3b6
@@ -26,7 +29,6 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/btree v1.0.1 // indirect
-	github.com/google/go-cmp v0.5.7 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/hashicorp/hcl/v2 v2.10.0 // indirect
 	github.com/insomniacslk/dhcp v0.0.0-20211209223715-7d93572ebe8e // indirect

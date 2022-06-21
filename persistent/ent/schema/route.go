@@ -25,6 +25,7 @@ func (Route) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("host", Node.Type).
 			Ref("routes").
-			Unique(),
+			Unique().
+			Required(),
 	}
 }

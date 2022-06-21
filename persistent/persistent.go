@@ -8,11 +8,17 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"github.com/miscord-dev/toxfu/persistent/ent"
+	"github.com/miscord-dev/toxfu/persistent/ent/address"
 	"github.com/miscord-dev/toxfu/persistent/ent/entutil"
 	"github.com/miscord-dev/toxfu/persistent/ent/node"
 	"github.com/miscord-dev/toxfu/persistent/ent/route"
 	"github.com/miscord-dev/toxfu/proto"
+	"golang.org/x/exp/slices"
 	"inet.af/netaddr"
+)
+
+var (
+	ErrNodeDisabled = fmt.Errorf("node is disabled")
 )
 
 type Persistent interface {
@@ -23,14 +29,37 @@ type Persistent interface {
 }
 
 type entPersistent struct {
-	prefix netaddr.IPPrefix
-	client *ent.Client
+	prefix           netaddr.IPPrefix
+	client           *ent.Client
+	offlineThreshold time.Duration
 }
 
 var _ Persistent = (*entPersistent)(nil)
 
-func (p *entPersistent) Upsert(ctx context.Context, req *proto.NodeRefreshRequest) error {
-	err := entutil.WithTx(ctx, p.client, func(tx *ent.Tx) error {
+func NewEnt(
+	prefix netaddr.IPPrefix,
+	client *ent.Client,
+	offlineThreshold time.Duration,
+) Persistent {
+	return &entPersistent{
+		prefix:           prefix,
+		client:           client,
+		offlineThreshold: offlineThreshold,
+	}
+}
+
+func (p *entPersistent) upsertNode(ctx context.Context, tx *ent.Tx, req *proto.NodeRefreshRequest) (int64, error) {
+	entity, err := tx.Node.Query().Where(node.PublicKeyEQ(req.PublicKey)).First(ctx)
+
+	if _, ok := err.(*ent.NotFoundError); err != nil && !ok {
+		return 0, fmt.Errorf("failed to find the node: %w", err)
+	}
+
+	if entity != nil && entity.State == node.StateDisabled {
+		return entity.ID, ErrNodeDisabled
+	}
+
+	if entity == nil {
 		id, err := tx.Node.
 			Create().
 			SetPublicKey(req.PublicKey).
@@ -38,8 +67,10 @@ func (p *entPersistent) Upsert(ctx context.Context, req *proto.NodeRefreshReques
 			SetHostName(req.Attribute.HostName).
 			SetOs(req.Attribute.Os).
 			SetGoos(req.Attribute.Goos).
+			SetEndpoints(req.Endpoints).
 			SetGoarch(req.Attribute.Goarch).
 			SetLastUpdatedAt(time.Now()).
+			SetState(node.StateOnline).
 			OnConflict(
 				sql.ConflictColumns(node.FieldPublicKey),
 			).
@@ -47,34 +78,96 @@ func (p *entPersistent) Upsert(ctx context.Context, req *proto.NodeRefreshReques
 			ID(ctx)
 
 		if err != nil {
+			return 0, fmt.Errorf("failed to create node: %w", err)
+		}
+
+		return id, nil
+	}
+
+	_, err = tx.Node.Update().
+		Where(node.ID(entity.ID)).
+		SetPublicKey(req.PublicKey).
+		SetPublicDiscoKey(req.PublicDiscoKey).
+		SetHostName(req.Attribute.HostName).
+		SetOs(req.Attribute.Os).
+		SetGoos(req.Attribute.Goos).
+		SetEndpoints(req.Endpoints).
+		SetGoarch(req.Attribute.Goarch).
+		SetLastUpdatedAt(time.Now()).
+		SetState(node.StateOnline).
+		Save(ctx)
+
+	if err != nil {
+		return 0, fmt.Errorf("failed to upsert node: %w", err)
+	}
+
+	return entity.ID, nil
+}
+
+func (p *entPersistent) Upsert(ctx context.Context, req *proto.NodeRefreshRequest) error {
+	err := entutil.WithTx(ctx, p.client, func(tx *ent.Tx) error {
+		id, err := p.upsertNode(ctx, tx, req)
+
+		if err != nil {
 			return fmt.Errorf("failed to upsert node: %w", err)
 		}
 
-		addrs, err := tx.Address.Query().
-			ForUpdate().
-			All(ctx)
+		assignAddress := func() error {
+			addrs, err := tx.Address.Query().
+				WithHost(func(query *ent.NodeQuery) {
+					query.Select(address.FieldID)
+				}).
+				All(ctx)
 
-		for _, a := range addrs {
-			if a.Edges.Host.ID == id {
+			if err != nil {
+				return fmt.Errorf("failed to load assigned addresses: %w", err)
+			}
+
+			addrStrings := make([]string, 0, len(addrs))
+			for _, a := range addrs {
+				if a.Edges.Host.ID == id {
+					return nil
+				}
+				addrStrings = append(addrStrings, a.Addr)
+			}
+			slices.Sort(addrStrings)
+
+			ipRange := p.prefix.Range()
+			assigned := ipRange.From().Next()
+			for ; assigned.Compare(ipRange.To()) != 0; assigned = assigned.Next() {
+				_, contains := slices.BinarySearch(addrStrings, assigned.String())
+				fmt.Println(assigned)
+
+				if !contains {
+					break
+				}
+			}
+
+			if assigned.Compare(ipRange.To()) == 0 {
+				return fmt.Errorf("no available address")
+			}
+
+			_, err = tx.Address.Create().
+				SetAddr(assigned.String()).
+				SetHostID(id).
+				Save(ctx)
+
+			if err != nil {
+				return fmt.Errorf("failed to save an assigned address: %w", err)
+			}
+
+			return nil
+		}
+
+		for i := 0; i < 10; i++ {
+			err = assignAddress()
+
+			if err == nil {
 				return nil
 			}
 		}
 
-		ipRange := p.prefix.Range()
-		assigned := ipRange.From()
-		for ; assigned.Compare(ipRange.To()) != 0; assigned.Next() {
-		}
-
-		_, err = tx.Address.Create().
-			SetAddr(assigned.String()).
-			SetHostID(id).
-			Save(ctx)
-
-		if err != nil {
-			return fmt.Errorf("failed to save an assigned address: %w", err)
-		}
-
-		return nil
+		return fmt.Errorf("failed to assign an address: %w", err)
 	})
 
 	return err
@@ -82,7 +175,8 @@ func (p *entPersistent) Upsert(ctx context.Context, req *proto.NodeRefreshReques
 
 func (p *entPersistent) List(ctx context.Context) ([]*proto.Node, error) {
 	nodes, err := p.client.Node.Query().Where(
-		node.LastUpdatedAtGT(time.Now().Add(-10 * time.Second)),
+		node.LastUpdatedAtGT(time.Now().Add(-p.offlineThreshold)),
+		node.StateEQ(node.StateOnline),
 	).WithRoutes().WithAddresses().All(ctx)
 
 	if err != nil {
@@ -116,8 +210,9 @@ func (p *entPersistent) List(ctx context.Context) ([]*proto.Node, error) {
 			})
 		}
 
+		node.AdvertisedPrefixes = node.Addresses
 		for _, r := range n.Edges.Routes {
-			node.Addresses = append(node.Addresses, &proto.IPPrefix{
+			node.AdvertisedPrefixes = append(node.AdvertisedPrefixes, &proto.IPPrefix{
 				Address: r.Addr,
 				Bits:    int32(r.Bits),
 			})
@@ -169,6 +264,23 @@ func (p *entPersistent) DeleteRoute(ctx context.Context, id int64, prefix *proto
 	})
 
 	return err
+}
+
+func (p *entPersistent) Disable(ctx context.Context, id int64) error {
+	affected, err := p.client.Node.Update().
+		SetState(node.StateDisabled).
+		Where(node.ID(id)).
+		Save(ctx)
+
+	if err != nil {
+		return fmt.Errorf("failed to disable node: %w", err)
+	}
+
+	if affected == 0 {
+		return fmt.Errorf("node not found")
+	}
+
+	return nil
 }
 
 func (p *entPersistent) Close() error {

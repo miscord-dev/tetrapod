@@ -15,7 +15,9 @@ type Address struct {
 func (Address) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int64("id").Unique(),
-		field.String("addr").MaxLen(256),
+		field.String("addr").
+			Unique().
+			MaxLen(256),
 	}
 }
 
@@ -24,6 +26,7 @@ func (Address) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("host", Node.Type).
 			Ref("addresses").
-			Unique(),
+			Unique().
+			Required(),
 	}
 }
