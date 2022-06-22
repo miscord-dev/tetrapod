@@ -2,6 +2,7 @@ package persistent
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -56,7 +57,7 @@ var (
 
 	subnetPrefix = netaddr.MustParseIPPrefix("192.168.1.0/24")
 
-	offlineThreshold = 10 * time.Second
+	offlineThreshold = 5 * time.Second
 )
 
 func ignoreProtoUnexported() cmp.Option {
@@ -230,6 +231,120 @@ func TestInsert(t *testing.T) {
 
 		if diff != "" {
 			t.Error(diff)
+		}
+	})
+
+	t.Run("auto-offline", func(t *testing.T) {
+		for i, req := range testNodeReq {
+			if err := persistent.Upsert(ctx, req); err != nil {
+				t.Fatal(i, err)
+			}
+		}
+
+		time.Sleep(offlineThreshold / 2)
+
+		if err := persistent.Upsert(ctx, testNodeReq[1]); err != nil {
+			t.Fatal(err)
+		}
+
+		time.Sleep(offlineThreshold / 2)
+
+		nodes, err := persistent.List(ctx)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(nodes) != 1 && nodes[0].GetPublicKey() != expected[1].GetPublicKey() {
+			t.Fatal("only 1st should be alive, but got ", nodes)
+		}
+	})
+
+	t.Run("auto-offline", func(t *testing.T) {
+		for i, req := range testNodeReq {
+			if err := persistent.Upsert(ctx, req); err != nil {
+				t.Fatal(i, err)
+			}
+		}
+
+		time.Sleep(offlineThreshold / 2)
+
+		if err := persistent.Upsert(ctx, testNodeReq[1]); err != nil {
+			t.Fatal(err)
+		}
+
+		time.Sleep(offlineThreshold / 2)
+
+		nodes, err := persistent.List(ctx)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(nodes) != 1 && nodes[0].GetPublicKey() != expected[1].GetPublicKey() {
+			t.Fatal("only 1st should be alive, but got ", nodes)
+		}
+	})
+
+	ids := []int64{}
+	t.Run("disable", func(t *testing.T) {
+		for i, req := range testNodeReq {
+			if err := persistent.Upsert(ctx, req); err != nil {
+				t.Fatal(i, err)
+			}
+		}
+
+		nodes, err := persistent.List(ctx)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		for _, n := range nodes {
+			ids = append(ids, n.Id)
+		}
+
+		if err := persistent.SetStatus(ctx, nodes[0].Id, false); err != nil {
+			t.Fatal(err)
+		}
+
+		newNodes, err := persistent.List(ctx)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(newNodes) != 1 {
+			t.Fatal("node is not disabled")
+		}
+
+		if newNodes[0].Id != nodes[1].Id {
+			t.Fatalf("incorrect node is not disabled(expected: %v, got: %v)", nodes[1].Id, newNodes[0].Id)
+		}
+
+	})
+
+	t.Run("then-enable", func(t *testing.T) {
+		if err := persistent.Upsert(ctx, testNodeReq[0]); !errors.Is(err, ErrNodeDisabled) {
+			t.Error("error should ErrNodeDisabled, but got ", err)
+		}
+
+		if err := persistent.SetStatus(ctx, ids[0], true); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := persistent.Upsert(ctx, testNodeReq[0]); err != nil {
+			t.Fatal(err)
+		}
+
+		newNodes, err := persistent.List(ctx)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(newNodes) != 2 {
+			t.Fatal("node is not enabled")
 		}
 	})
 

@@ -26,6 +26,7 @@ type Persistent interface {
 	List(ctx context.Context) ([]*proto.Node, error)
 	AddRoute(ctx context.Context, id int64, route *proto.IPPrefix) (ret *ent.Route, err error)
 	DeleteRoute(ctx context.Context, id int64, prefix *proto.IPPrefix) error
+	SetStatus(ctx context.Context, id int64, enabled bool) error
 }
 
 type entPersistent struct {
@@ -266,9 +267,15 @@ func (p *entPersistent) DeleteRoute(ctx context.Context, id int64, prefix *proto
 	return err
 }
 
-func (p *entPersistent) Disable(ctx context.Context, id int64) error {
+func (p *entPersistent) SetStatus(ctx context.Context, id int64, enabled bool) error {
+	state := node.StateDisabled
+
+	if enabled {
+		state = node.StateOffline
+	}
+
 	affected, err := p.client.Node.Update().
-		SetState(node.StateDisabled).
+		SetState(state).
 		Where(node.ID(id)).
 		Save(ctx)
 
