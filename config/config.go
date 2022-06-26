@@ -9,7 +9,7 @@ import (
 )
 
 type Config struct {
-	Port   int
+	Port   int    `yaml:"port"`
 	Prefix string `yaml:"prefix"`
 	DSN    string `yaml:"dsn"`
 }
@@ -25,11 +25,15 @@ var (
 )
 
 func init() {
-	flag.StringVar(&configPath, "config", "toxfu.yaml", "Path to toxfu.yaml")
+	flag.StringVar(&configPath, "config", "", "Path to toxfu.yaml")
 }
 
 func NewConfig() (*Config, error) {
 	flag.Parse()
+
+	if configPath == "" {
+		return &defaultConfig, nil
+	}
 
 	fp, err := os.Open(configPath)
 

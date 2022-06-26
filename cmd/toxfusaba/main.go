@@ -6,6 +6,7 @@ import (
 	"net"
 	"time"
 
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/miscord-dev/toxfu/config"
 	"github.com/miscord-dev/toxfu/persistent"
 	"github.com/miscord-dev/toxfu/persistent/ent"
