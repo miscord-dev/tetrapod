@@ -78,7 +78,7 @@ func TestInsert(t *testing.T) {
 	persistent := NewEnt(subnetPrefix, client, offlineThreshold)
 
 	for i, req := range testNodeReq {
-		if err := persistent.Upsert(ctx, req); err != nil {
+		if _, err := persistent.Upsert(ctx, req); err != nil {
 			t.Fatal(i, err)
 		}
 	}
@@ -159,7 +159,7 @@ func TestInsert(t *testing.T) {
 		testNodeReq[0].Endpoints = append(testNodeReq[0].Endpoints, "192.0.1.1:12345")
 
 		for i, req := range testNodeReq {
-			if err := persistent.Upsert(ctx, req); err != nil {
+			if _, err := persistent.Upsert(ctx, req); err != nil {
 				t.Fatal(i, err)
 			}
 		}
@@ -236,14 +236,14 @@ func TestInsert(t *testing.T) {
 
 	t.Run("auto-offline", func(t *testing.T) {
 		for i, req := range testNodeReq {
-			if err := persistent.Upsert(ctx, req); err != nil {
+			if _, err := persistent.Upsert(ctx, req); err != nil {
 				t.Fatal(i, err)
 			}
 		}
 
 		time.Sleep(offlineThreshold / 2)
 
-		if err := persistent.Upsert(ctx, testNodeReq[1]); err != nil {
+		if _, err := persistent.Upsert(ctx, testNodeReq[1]); err != nil {
 			t.Fatal(err)
 		}
 
@@ -262,14 +262,14 @@ func TestInsert(t *testing.T) {
 
 	t.Run("auto-offline", func(t *testing.T) {
 		for i, req := range testNodeReq {
-			if err := persistent.Upsert(ctx, req); err != nil {
+			if _, err := persistent.Upsert(ctx, req); err != nil {
 				t.Fatal(i, err)
 			}
 		}
 
 		time.Sleep(offlineThreshold / 2)
 
-		if err := persistent.Upsert(ctx, testNodeReq[1]); err != nil {
+		if _, err := persistent.Upsert(ctx, testNodeReq[1]); err != nil {
 			t.Fatal(err)
 		}
 
@@ -289,7 +289,7 @@ func TestInsert(t *testing.T) {
 	ids := []int64{}
 	t.Run("disable", func(t *testing.T) {
 		for i, req := range testNodeReq {
-			if err := persistent.Upsert(ctx, req); err != nil {
+			if _, err := persistent.Upsert(ctx, req); err != nil {
 				t.Fatal(i, err)
 			}
 		}
@@ -325,7 +325,7 @@ func TestInsert(t *testing.T) {
 	})
 
 	t.Run("then-enable", func(t *testing.T) {
-		if err := persistent.Upsert(ctx, testNodeReq[0]); !errors.Is(err, ErrNodeDisabled) {
+		if _, err := persistent.Upsert(ctx, testNodeReq[0]); !errors.Is(err, ErrNodeDisabled) {
 			t.Error("error should ErrNodeDisabled, but got ", err)
 		}
 
@@ -333,7 +333,7 @@ func TestInsert(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := persistent.Upsert(ctx, testNodeReq[0]); err != nil {
+		if _, err := persistent.Upsert(ctx, testNodeReq[0]); err != nil {
 			t.Fatal(err)
 		}
 
