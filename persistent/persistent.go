@@ -22,7 +22,7 @@ var (
 )
 
 type Persistent interface {
-	Upsert(ctx context.Context, req *proto.NodeRefreshRequest) error
+	Upsert(ctx context.Context, req *proto.NodeRefreshRequest) (int64, error)
 	List(ctx context.Context) ([]*proto.Node, error)
 	AddRoute(ctx context.Context, id int64, route *proto.IPPrefix) (ret *ent.Route, err error)
 	DeleteRoute(ctx context.Context, id int64, prefix *proto.IPPrefix) error
@@ -105,9 +105,9 @@ func (p *entPersistent) upsertNode(ctx context.Context, tx *ent.Tx, req *proto.N
 	return entity.ID, nil
 }
 
-func (p *entPersistent) Upsert(ctx context.Context, req *proto.NodeRefreshRequest) error {
-	err := entutil.WithTx(ctx, p.client, func(tx *ent.Tx) error {
-		id, err := p.upsertNode(ctx, tx, req)
+func (p *entPersistent) Upsert(ctx context.Context, req *proto.NodeRefreshRequest) (id int64, err error) {
+	err = entutil.WithTx(ctx, p.client, func(tx *ent.Tx) error {
+		id, err = p.upsertNode(ctx, tx, req)
 
 		if err != nil {
 			return fmt.Errorf("failed to upsert node: %w", err)
@@ -137,7 +137,6 @@ func (p *entPersistent) Upsert(ctx context.Context, req *proto.NodeRefreshReques
 			assigned := ipRange.From().Next()
 			for ; assigned.Compare(ipRange.To()) != 0; assigned = assigned.Next() {
 				_, contains := slices.BinarySearch(addrStrings, assigned.String())
-				fmt.Println(assigned)
 
 				if !contains {
 					break
@@ -171,7 +170,7 @@ func (p *entPersistent) Upsert(ctx context.Context, req *proto.NodeRefreshReques
 		return fmt.Errorf("failed to assign an address: %w", err)
 	})
 
-	return err
+	return id, err
 }
 
 func (p *entPersistent) List(ctx context.Context) ([]*proto.Node, error) {
