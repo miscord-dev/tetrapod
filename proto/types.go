@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/samber/lo"
 	"inet.af/netaddr"
 	"tailscale.com/tailcfg"
 	"tailscale.com/types/key"
@@ -53,13 +54,22 @@ func (n *Node) TailcfgNode() (*tailcfg.Node, error) {
 
 	idStr := strconv.FormatInt(n.Id, 10)
 	online := true
+
 	tn := &tailcfg.Node{
-		ID:                tailcfg.NodeID(n.GetId()),
-		StableID:          tailcfg.StableNodeID(idStr),
-		Name:              idStr,
-		Addresses:         addrs,
-		AllowedIPs:        advertised,
-		PrimaryRoutes:     advertised,
+		ID:         tailcfg.NodeID(n.GetId()),
+		StableID:   tailcfg.StableNodeID(idStr),
+		Name:       idStr,
+		Addresses:  addrs,
+		AllowedIPs: advertised,
+		PrimaryRoutes: lo.Filter(advertised, func(prefix netaddr.IPPrefix, i int) bool {
+			for i := range addrs {
+				if addrs[i].String() == prefix.String() {
+					return false
+				}
+			}
+
+			return true
+		}),
 		Endpoints:         n.GetEndpoints(),
 		Online:            &online,
 		KeepAlive:         true,

@@ -1,7 +1,9 @@
 package backend
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -9,6 +11,7 @@ import (
 	"github.com/miscord-dev/toxfu/proto"
 	"github.com/miscord-dev/toxfu/proto/nodeattr"
 	"github.com/miscord-dev/toxfu/signal/signalclient"
+	"github.com/samber/lo"
 	"inet.af/netaddr"
 	"tailscale.com/net/dns"
 	"tailscale.com/tailcfg"
@@ -41,14 +44,15 @@ type backend struct {
 type Config struct {
 	SignalClient signalclient.Client
 	Engine       wgengine.Engine
-	DiscoPrivate key.DiscoPrivate
 	NodePrivate  key.NodePrivate
 	Logger       logger.Logf
 }
 
 func New(cfg *Config) Backend {
 	return &backend{
-		cfg: cfg,
+		cfg:          cfg,
+		signalClient: cfg.SignalClient,
+		engine:       cfg.Engine,
 	}
 }
 
@@ -58,10 +62,11 @@ func (b *backend) Start() {
 	b.signalClient.RegisterRecvCallback(b.recvCallbck)
 	b.engine.SetStatusCallback(b.statusCallback)
 	b.engine.RequestStatus()
+	go b.run()
 }
 
 var (
-	expiryTime = time.Date(2222, time.January, 1, 0, 0, 0, 0, nil)
+	expiryTime = time.Date(2222, time.January, 1, 0, 0, 0, 0, time.UTC)
 )
 
 func (b *backend) composeNetworkMap(resp *proto.NodeRefreshResponse) (*netmap.NetworkMap, error) {
@@ -94,6 +99,18 @@ func (b *backend) composeNetworkMap(resp *proto.NodeRefreshResponse) (*netmap.Ne
 		Peers:         peers,
 	}
 
+	func() {
+		fp, err := os.Create("/tmp/toxfu_network_map.json")
+
+		if err != nil {
+			panic(err)
+		}
+
+		defer fp.Close()
+
+		json.NewEncoder(fp).Encode(nm)
+	}()
+
 	return nm, nil
 }
 
@@ -110,6 +127,7 @@ func (b *backend) composeDERPMap(resp *proto.NodeRefreshResponse) (*tailcfg.DERP
 						RegionID: 1,
 						HostName: resp.GetStunServer(),
 						STUNOnly: true,
+						STUNPort: 19302,
 					},
 				},
 			},
@@ -121,6 +139,18 @@ func (b *backend) composeDERPMap(resp *proto.NodeRefreshResponse) (*tailcfg.DERP
 }
 
 func (b *backend) recvCallbck(resp *proto.NodeRefreshResponse) {
+	func() {
+		fp, err := os.Create("/tmp/toxfu_current_config.json")
+
+		if err != nil {
+			panic(err)
+		}
+
+		defer fp.Close()
+
+		json.NewEncoder(fp).Encode(resp)
+	}()
+
 	nm, err := b.composeNetworkMap(resp)
 
 	if err != nil {
@@ -136,6 +166,8 @@ func (b *backend) recvCallbck(resp *proto.NodeRefreshResponse) {
 
 		return
 	}
+
+	nm.DERPMap = derpMap
 
 	var exitNode tailcfg.StableNodeID
 	for _, p := range nm.Peers {
@@ -217,8 +249,11 @@ func (b *backend) sendRefreshRequest() error {
 
 	req := proto.NodeRefreshRequest{}
 	req.PublicKey = proto.MarshalNodePublic(b.cfg.NodePrivate.Public())
-	req.PublicDiscoKey = proto.MarshalDiscoPublic(b.cfg.DiscoPrivate.Public())
+	req.PublicDiscoKey = proto.MarshalDiscoPublic(b.engine.DiscoPublicKey())
 	req.Attribute = b.nodeAttribute
+	req.Endpoints = lo.Map(stat.LocalAddrs, func(addr tailcfg.Endpoint, i int) string {
+		return addr.Addr.String()
+	})
 
 	return b.signalClient.Send(&req)
 }
@@ -226,6 +261,7 @@ func (b *backend) sendRefreshRequest() error {
 func (b *backend) run() {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
+	b.cfg.Logger("running backend thread")
 
 	exp := backoff.NewExponentialBackOff()
 	exp.MaxInterval = 15 * time.Second
@@ -234,6 +270,7 @@ func (b *backend) run() {
 		case <-b.triggerStatusUpdateChan:
 		case <-ticker.C:
 		}
+		b.cfg.Logger("sending status")
 
 		backoff.Retry(func() error {
 			if err := b.sendRefreshRequest(); err != nil {

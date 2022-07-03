@@ -9,6 +9,7 @@ import (
 
 	"github.com/miscord-dev/toxfu/proto"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 	"tailscale.com/types/logger"
 )
@@ -67,6 +68,8 @@ func New(ctx context.Context, target string, logger logger.Logf) (Client, error)
 			Timeout:             2 * time.Second,
 			PermitWithoutStream: true,
 		}),
+		grpc.WithInsecure(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 
 	if err != nil {

@@ -79,6 +79,8 @@ func (s *Server) refreshSender(
 			continue
 		}
 
+		s.log("Sending current status to node(%v): %v", id, resp)
+
 		if err := svr.Send(resp); err != nil {
 			s.log("send failed: %v", err)
 
@@ -119,6 +121,7 @@ func (s *Server) refreshReceiver(
 			return
 		}
 
+		s.log("upserting %s", req.PublicKey)
 		id, err = s.persistent.Upsert(ctx, req)
 		if err != nil {
 			s.log("failed to upsert node(%s): %v", req.PublicKey, err)
@@ -136,6 +139,8 @@ func (s *Server) refreshReceiver(
 }
 
 func (s *Server) Refresh(svr proto.NodeAPI_RefreshServer) error {
+	s.log("refresh started")
+
 	ctx, cancel := context.WithCancel(svr.Context())
 
 	go s.refreshReceiver(ctx, svr, cancel)

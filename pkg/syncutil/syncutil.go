@@ -1,6 +1,8 @@
 package syncutil
 
-import "sync"
+import (
+	"sync"
+)
 
 type Cond struct {
 	cond   *sync.Cond
@@ -55,18 +57,22 @@ type Subscriber struct {
 
 func (s *Subscriber) run() {
 	go func() {
-		s.cond.cond.Wait()
+		for {
+			s.cond.cond.L.Lock()
+			s.cond.cond.Wait()
+			s.cond.cond.L.Unlock()
 
-		select {
-		case <-s.closed:
-			close(s.ch)
+			select {
+			case <-s.closed:
+				close(s.ch)
 
-			return
-		case <-s.sclosed:
-			close(s.ch)
+				return
+			case <-s.sclosed:
+				close(s.ch)
 
-			return
-		case s.ch <- struct{}{}:
+				return
+			case s.ch <- struct{}{}:
+			}
 		}
 	}()
 }

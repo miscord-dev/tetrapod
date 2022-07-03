@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -26,19 +27,29 @@ func main() {
 		panic(err)
 	}
 
+	logger("initializing TCP server for %v", cfg.Port)
+
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", cfg.Port))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
+
+	logger("initializing DB")
 
 	entClient, err := ent.Open("sqlite3", cfg.DSN)
 	if err != nil {
 		panic(err)
 	}
 
+	if err := entClient.Schema.Create(context.TODO()); err != nil {
+		panic(err)
+	}
+
+	logger("initializing gRPC server")
+
 	server := grpc.NewServer()
 	pers := persistent.NewEnt(netaddr.MustParseIPPrefix(cfg.Prefix), entClient, 10*time.Second)
-	nodeAPIServer := signalserver.NewServer("stun.l.google.com:19302", logger, pers)
+	nodeAPIServer := signalserver.NewServer("stun1.l.google.com", logger, pers)
 
 	proto.RegisterNodeAPIServer(server, nodeAPIServer)
 

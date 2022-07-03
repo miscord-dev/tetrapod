@@ -10,8 +10,10 @@ import (
 	"github.com/miscord-dev/toxfu/backend"
 	"github.com/miscord-dev/toxfu/signal/signalclient"
 	"tailscale.com/net/tstun"
+	"tailscale.com/types/key"
 	"tailscale.com/types/logger"
 	"tailscale.com/wgengine"
+	"tailscale.com/wgengine/monitor"
 	"tailscale.com/wgengine/router"
 )
 
@@ -25,11 +27,20 @@ func main() {
 		tstun.Diagnose(logger, name)
 		panic(fmt.Errorf("tstun.New(%q): %w", name, err))
 	}
+	defer dev.Close()
 
-	r, err := router.New(logger, dev, nil)
+	mon, err := monitor.New(logger)
+
+	if err != nil {
+		panic(err)
+	}
+	defer mon.Close()
+
+	r, err := router.New(logger, dev, mon)
 	if err != nil {
 		panic(fmt.Errorf("router.New(%q): %w", devName, err))
 	}
+	defer r.Close()
 
 	config := wgengine.Config{
 		Tun:    dev,
@@ -41,21 +52,34 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	defer func() {
+		engine.Close()
+		engine.Wait()
+	}()
 
 	ctx := context.Background()
-	target := ""
+	target := "192.168.1.16:50051"
+
+	logger("connecting")
 
 	client, err := signalclient.New(ctx, target, logger)
 
 	if err != nil {
 		panic(err)
 	}
+	defer client.Close()
+
+	client.Start()
+
+	logger("connected?")
 
 	backend := backend.New(&backend.Config{
 		SignalClient: client,
 		Engine:       engine,
 		Logger:       logger,
+		NodePrivate:  key.NewNode(),
 	})
+	defer backend.Close()
 
 	backend.Start()
 
@@ -63,5 +87,4 @@ func main() {
 	defer cancel()
 
 	<-c.Done()
-	backend.Start()
 }
