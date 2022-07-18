@@ -21,9 +21,10 @@ type DiscoPeerEndpoint struct {
 
 	packetID uint32
 
-	statusLock sync.Mutex
-	priority   ticker.Priority
-	status     *DiscoPeerEndpointStatus
+	statusLock        sync.Mutex
+	priority          ticker.Priority
+	status            *DiscoPeerEndpointStatus
+	lastReinitialized time.Time
 }
 
 func newDiscoPeerEndpoint(ds *DiscoPeer, endpointID uint32, endpoint netip.AddrPort) *DiscoPeerEndpoint {
@@ -50,7 +51,7 @@ func (pe *DiscoPeerEndpoint) dropCallback() {
 	pe.statusLock.Lock()
 	defer pe.statusLock.Unlock()
 
-	pe.ticker.SetState(ticker.Connecting, pe.priority)
+	pe.ticker.SetState(ticker.Connecting, pe.priority, false)
 	pe.status.setStatus(ticker.Connecting, 0)
 }
 
@@ -86,7 +87,7 @@ func (pe *DiscoPeerEndpoint) handlePong(pkt DiscoPacket) {
 	pe.statusLock.Lock()
 	defer pe.statusLock.Unlock()
 
-	pe.ticker.SetState(ticker.Connected, pe.priority)
+	pe.ticker.SetState(ticker.Connected, pe.priority, false)
 	pe.status.setStatus(ticker.Connected, rtt)
 }
 
@@ -139,7 +140,24 @@ func (pe *DiscoPeerEndpoint) SetPriority(priority ticker.Priority) {
 
 	pe.priority = priority
 
-	pe.ticker.SetState(state, priority)
+	pe.ticker.SetState(state, priority, false)
+}
+
+func (pe *DiscoPeerEndpoint) ReceivePing() {
+	if pe.status.Get().State != ticker.Connecting {
+		return
+	}
+
+	pe.statusLock.Lock()
+	defer pe.statusLock.Unlock()
+
+	now := time.Now()
+	if now.Sub(pe.lastReinitialized) <= 30*time.Second {
+		return
+	}
+	pe.lastReinitialized = time.Now()
+
+	pe.ticker.SetState(ticker.Connecting, pe.priority, true)
 }
 
 type DiscoPeerEndpointStatus struct {
@@ -179,11 +197,14 @@ func (s *DiscoPeerEndpointStatus) NotifyStatus(fn func(status DiscoPeerEndpointS
 
 		s.cond.Wait()
 		curr = s.readonly()
-		s.cond.L.Unlock()
 
 		if s.closed {
+			s.cond.L.Unlock()
 			return
 		}
+
+		s.cond.L.Unlock()
+
 		if !curr.equalsTo(prev) {
 			fn(curr)
 			prev = curr

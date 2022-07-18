@@ -26,7 +26,7 @@ const (
 type Ticker interface {
 	C() <-chan struct{}
 
-	SetState(state State, priority Priority)
+	SetState(state State, priority Priority, forceReinit bool)
 
 	io.Closer
 }
@@ -52,7 +52,7 @@ func NewTicker() Ticker {
 		state:    unsetState,
 		priority: unsetPriority,
 	}
-	ticker.SetState(Connecting, Primary)
+	ticker.SetState(Connecting, Primary, false)
 	ticker.wake()
 
 	go ticker.run()
@@ -109,11 +109,11 @@ func (t *ticker) run() {
 	}
 }
 
-func (t *ticker) SetState(state State, priority Priority) {
+func (t *ticker) SetState(state State, priority Priority, forceReinit bool) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
-	if t.state == state && t.priority == priority {
+	if !forceReinit && t.state == state && t.priority == priority {
 		return
 	}
 
