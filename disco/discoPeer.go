@@ -1,7 +1,6 @@
 package disco
 
 import (
-	"log"
 	"math"
 	"net/netip"
 	"sync"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/miscord-dev/toxfu/pkg/sets"
 	"github.com/miscord-dev/toxfu/pkg/syncmap"
+	"github.com/miscord-dev/toxfu/pkg/ticker"
 	"github.com/miscord-dev/toxfu/pkg/wgkey"
 )
 
@@ -105,8 +105,9 @@ func (p *DiscoPeer) Status() *DiscoPeerStatus {
 func (p *DiscoPeer) updateStatus() {
 	minRTT := time.Duration(math.MaxInt64)
 	var minEndpoint netip.AddrPort
+	var minID uint32
 	p.endpointStatusMap.Range(func(key uint32, value DiscoPeerEndpointStatusReadOnly) bool {
-		if !value.Connected || minRTT < value.RTT {
+		if value.State != ticker.Connected || minRTT < value.RTT {
 			return true
 		}
 
@@ -118,6 +119,24 @@ func (p *DiscoPeer) updateStatus() {
 
 		minRTT = value.RTT
 		minEndpoint = dpe.endpoint
+		minID = key
+
+		return true
+	})
+
+	p.endpoints.Range(func(key uint32, value *DiscoPeerEndpoint) bool {
+		if minRTT == math.MaxInt64 {
+			value.SetPriority(ticker.Primary)
+
+			return true
+		}
+
+		priority := ticker.Sub
+		if key == minID {
+			priority = ticker.Primary
+		}
+
+		value.SetPriority(priority)
 
 		return true
 	})
@@ -169,7 +188,6 @@ func (p *DiscoPeer) run() {
 				SharedKey: p.sharedKey,
 			}
 			if !decrypted.Decrypt(&pkt) {
-				log.Println("decrypt failed")
 				continue
 			}
 
@@ -182,7 +200,6 @@ func (p *DiscoPeer) run() {
 			ep, ok := p.endpoints.Load(decrypted.EndpointID)
 
 			if !ok {
-				log.Println("endpoint not found", decrypted.EndpointID)
 				continue
 			}
 

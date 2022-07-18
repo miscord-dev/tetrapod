@@ -21,7 +21,9 @@ type DiscoPeerEndpoint struct {
 
 	packetID uint32
 
-	status *DiscoPeerEndpointStatus
+	statusLock sync.Mutex
+	priority   ticker.Priority
+	status     *DiscoPeerEndpointStatus
 }
 
 func newDiscoPeerEndpoint(ds *DiscoPeer, endpointID uint32, endpoint netip.AddrPort) *DiscoPeerEndpoint {
@@ -32,6 +34,7 @@ func newDiscoPeerEndpoint(ds *DiscoPeer, endpointID uint32, endpoint netip.AddrP
 		peer:       ds,
 		endpointID: endpointID,
 		endpoint:   endpoint,
+		priority:   ticker.Primary,
 
 		status: &DiscoPeerEndpointStatus{
 			cond: sync.NewCond(&sync.Mutex{}),
@@ -44,9 +47,11 @@ func newDiscoPeerEndpoint(ds *DiscoPeer, endpointID uint32, endpoint netip.AddrP
 }
 
 func (pe *DiscoPeerEndpoint) dropCallback() {
-	// TODO: handle priority
-	pe.ticker.SetState(ticker.Connecting, ticker.Primary)
-	pe.status.setStatus(false, 0)
+	pe.statusLock.Lock()
+	defer pe.statusLock.Unlock()
+
+	pe.ticker.SetState(ticker.Connecting, pe.priority)
+	pe.status.setStatus(ticker.Connecting, 0)
 }
 
 func (pe *DiscoPeerEndpoint) sendDiscoPing() {
@@ -78,8 +83,11 @@ func (pe *DiscoPeerEndpoint) handlePong(pkt DiscoPacket) {
 		return
 	}
 
-	pe.ticker.SetState(ticker.Connected, ticker.Primary)
-	pe.status.setStatus(true, rtt)
+	pe.statusLock.Lock()
+	defer pe.statusLock.Unlock()
+
+	pe.ticker.SetState(ticker.Connected, pe.priority)
+	pe.status.setStatus(ticker.Connected, rtt)
 }
 
 func (pe *DiscoPeerEndpoint) run() {
@@ -123,24 +131,35 @@ func (pe *DiscoPeerEndpoint) Status() *DiscoPeerEndpointStatus {
 	return pe.status
 }
 
+func (pe *DiscoPeerEndpoint) SetPriority(priority ticker.Priority) {
+	pe.statusLock.Lock()
+	defer pe.statusLock.Unlock()
+
+	state := pe.status.Get().State
+
+	pe.priority = priority
+
+	pe.ticker.SetState(state, priority)
+}
+
 type DiscoPeerEndpointStatus struct {
 	cond *sync.Cond
 
-	closed    bool
-	connected bool
-	rtt       time.Duration
+	closed bool
+	state  ticker.State
+	rtt    time.Duration
 }
 
 type DiscoPeerEndpointStatusReadOnly struct {
-	Connected bool
-	RTT       time.Duration
+	State ticker.State
+	RTT   time.Duration
 }
 
 func (s *DiscoPeerEndpointStatus) NotifyStatus(fn func(status DiscoPeerEndpointStatusReadOnly)) {
 	s.cond.L.Lock()
 	prev := s.readonly()
-	fn(prev)
 	s.cond.L.Unlock()
+	fn(prev)
 	for {
 		s.cond.L.Lock()
 
@@ -172,11 +191,18 @@ func (s *DiscoPeerEndpointStatus) NotifyStatus(fn func(status DiscoPeerEndpointS
 	}
 }
 
-func (s *DiscoPeerEndpointStatus) setStatus(connected bool, rtt time.Duration) {
+func (s *DiscoPeerEndpointStatus) Get() DiscoPeerEndpointStatusReadOnly {
 	s.cond.L.Lock()
 	defer s.cond.L.Unlock()
 
-	s.connected = connected
+	return s.readonly()
+}
+
+func (s *DiscoPeerEndpointStatus) setStatus(state ticker.State, rtt time.Duration) {
+	s.cond.L.Lock()
+	defer s.cond.L.Unlock()
+
+	s.state = state
 	s.rtt = rtt
 
 	s.cond.Broadcast()
@@ -193,11 +219,11 @@ func (s *DiscoPeerEndpointStatus) close() {
 
 func (s *DiscoPeerEndpointStatus) readonly() DiscoPeerEndpointStatusReadOnly {
 	return DiscoPeerEndpointStatusReadOnly{
-		Connected: s.connected,
-		RTT:       s.rtt,
+		State: s.state,
+		RTT:   s.rtt,
 	}
 }
 
 func (s *DiscoPeerEndpointStatusReadOnly) equalsTo(target DiscoPeerEndpointStatusReadOnly) bool {
-	return s.Connected == target.Connected && s.RTT == target.RTT
+	return s.State == target.State && s.RTT == target.RTT
 }

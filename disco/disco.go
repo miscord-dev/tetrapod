@@ -102,13 +102,13 @@ func (d *Disco) runReceiverV4() {
 
 		ok := pkt.Unmarshal(buf[:n])
 		if !ok {
-			fmt.Println("unmarshal failed")
+			log.Println("unmarshal failed")
 			continue
 		}
 
 		peer, ok := d.peers.Load(pkt.SrcPublicDiscoKey)
 		if !ok {
-			fmt.Println("finding peer failed", base64.StdEncoding.EncodeToString(pkt.SrcPublicDiscoKey[:]))
+			log.Println("finding peer failed", base64.StdEncoding.EncodeToString(pkt.SrcPublicDiscoKey[:]))
 			continue
 		}
 
