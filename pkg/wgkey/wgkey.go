@@ -2,6 +2,7 @@ package wgkey
 
 import (
 	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"io"
 
@@ -20,9 +21,9 @@ func New() (DiscoPrivateKey, error) {
 	return DiscoPrivateKey(key), nil
 }
 
-func (d DiscoPrivateKey) Shared(pubKey DiscoPublicKey) DiscoPrivateKey {
-	var ret DiscoPrivateKey
-	box.Precompute((*[32]byte)(&ret), (*[32]byte)(&d), (*[32]byte)(&pubKey))
+func (d DiscoPrivateKey) Shared(pubKey DiscoPublicKey) DiscoSharedKey {
+	var ret DiscoSharedKey
+	box.Precompute((*[32]byte)(&ret), (*[32]byte)(&pubKey), (*[32]byte)(&d))
 
 	return ret
 }
@@ -32,6 +33,35 @@ func (d DiscoPrivateKey) Public() DiscoPublicKey {
 }
 
 type DiscoPublicKey wgtypes.Key
+
+func Parse(pubKey string) (DiscoPublicKey, error) {
+	var ret DiscoPublicKey
+	if err := ret.Unmarshal(pubKey); err != nil {
+		return DiscoPublicKey{}, fmt.Errorf("failed to parse public key: %w", err)
+	}
+
+	return ret, nil
+}
+
+func (d DiscoPublicKey) Marshal() string {
+	return base64.StdEncoding.EncodeToString(d[:])
+}
+
+func (d DiscoPublicKey) Unmarshal(encoded string) error {
+	b, err := base64.StdEncoding.DecodeString(encoded)
+
+	if err != nil {
+		return err
+	}
+
+	if len(b) != len(d) {
+		return fmt.Errorf("invalid key length: %d", len(b))
+	}
+
+	copy(d[:], b)
+
+	return nil
+}
 
 const (
 	nonceLen = 24

@@ -1,70 +1,107 @@
 package ticker
 
 import (
+	"fmt"
 	"io"
 	"sync"
 	"time"
 )
 
+type State int
+
+const (
+	Connecting State = iota
+	Connected
+	unsetState
+)
+
+type Priority int
+
+const (
+	Primary Priority = iota
+	Sub
+	unsetPriority
+)
+
+// Ticker is a utility to manage when to send ping to peers
 type Ticker interface {
 	C() <-chan struct{}
 
-	StartSearching()
-
-	Found()
-
-	UseMainLine(flag bool)
+	SetState(state State, priority Priority)
 
 	io.Closer
 }
 
 type ticker struct {
-	ch, reset, closed chan struct{}
+	wakeCh, reset, closed chan struct{}
 
 	lock            sync.Mutex
 	multiplier      float64
 	currentInterval time.Duration
 	maxInterval     time.Duration
+
+	state    State
+	priority Priority
 }
 
 func NewTicker() Ticker {
-	return &ticker{
-		ch:     make(chan struct{}),
-		reset:  make(chan struct{}),
+	ticker := &ticker{
+		wakeCh: make(chan struct{}, 1),
+		reset:  make(chan struct{}, 1),
 		closed: make(chan struct{}),
+
+		state:    unsetState,
+		priority: unsetPriority,
 	}
+	ticker.SetState(Connecting, Primary)
+	ticker.wake()
+
+	go ticker.run()
+
+	return ticker
 }
 
 func (t *ticker) C() <-chan struct{} {
-	return t.ch
+	return t.wakeCh
 }
 
 func (t *ticker) wake() {
 	select {
-	case t.ch <- struct{}{}:
+	case t.wakeCh <- struct{}{}:
 	default:
 	}
 }
 
 func (t *ticker) run() {
+	runPrev := time.Time{}
+
+	after := time.NewTimer(0)
+	defer after.Stop()
 	for {
 		t.lock.Lock()
-		after := time.NewTicker(t.currentInterval)
+
+		after.Stop()
+		select {
+		case <-after.C:
+		default:
+		}
+		after.Reset(time.Until(runPrev.Add(t.currentInterval)))
+
 		t.lock.Unlock()
+
 		select {
 		case <-t.reset:
-			after.Stop()
 			continue
-		case <-after.C:
-			after.Stop()
 		case <-t.closed:
-			after.Stop()
 			return
+		case <-after.C:
 		}
 
 		t.wake()
+		runPrev = time.Now()
 
 		t.lock.Lock()
+		fmt.Println(runPrev, t.currentInterval)
 		t.currentInterval = time.Duration(float64(t.currentInterval) * t.multiplier)
 
 		if t.currentInterval > t.maxInterval {
@@ -74,31 +111,34 @@ func (t *ticker) run() {
 	}
 }
 
-func (t *ticker) StartSearching() {
-	t.lock.Lock()
-	defer t.lock.Unlock()
-	t.currentInterval = 100 * time.Millisecond
-	t.multiplier = 2
-	t.maxInterval = 3 * time.Second
-}
-
-func (t *ticker) Found() {
-	t.lock.Lock()
-	defer t.lock.Unlock()
-	t.currentInterval = 3 * time.Second
-	t.multiplier = 1
-}
-
-func (t *ticker) UseMainLine(mainLine bool) {
+func (t *ticker) SetState(state State, priority Priority) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
-	t.multiplier = 1
+	if t.state == state && t.priority == priority {
+		return
+	}
 
-	t.currentInterval = 10 * time.Second
+	if priority == Primary {
+		t.maxInterval = 3 * time.Second
+	} else {
+		t.maxInterval = 10 * time.Second
+	}
 
-	if mainLine {
+	switch state {
+	case Connecting:
+		t.currentInterval = 100 * time.Millisecond
+	case Connected:
 		t.currentInterval = 3 * time.Second
+	}
+	t.multiplier = 2
+
+	t.state = state
+	t.priority = priority
+
+	select {
+	case t.reset <- struct{}{}:
+	default:
 	}
 }
 
