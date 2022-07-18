@@ -47,7 +47,7 @@ func (d DiscoPublicKey) Marshal() string {
 	return base64.StdEncoding.EncodeToString(d[:])
 }
 
-func (d DiscoPublicKey) Unmarshal(encoded string) error {
+func (d *DiscoPublicKey) Unmarshal(encoded string) error {
 	b, err := base64.StdEncoding.DecodeString(encoded)
 
 	if err != nil {
@@ -62,6 +62,12 @@ func (d DiscoPublicKey) Unmarshal(encoded string) error {
 
 	return nil
 }
+
+func (d DiscoPublicKey) String() string {
+	return base64.StdEncoding.EncodeToString(d[:])
+}
+
+var _ fmt.Stringer = (*DiscoPublicKey)(nil)
 
 const (
 	nonceLen = 24

@@ -50,14 +50,9 @@ func main() {
 		netip.AddrPortFrom(netip.MustParseAddr("127.0.0.1"), uint16(peerPort)),
 	})
 
-	ch := make(chan disco.DiscoPeerStatusReadOnly)
 	peer.Status().NotifyStatus(func(status disco.DiscoPeerStatusReadOnly) {
-		ch <- status
+		fmt.Println(status)
 	})
-
-	for s := range ch {
-		fmt.Println(s)
-	}
 
 	d.Close()
 }

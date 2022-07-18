@@ -1,6 +1,7 @@
 package disco
 
 import (
+	"log"
 	"math"
 	"net/netip"
 	"sync"
@@ -69,7 +70,7 @@ func (p *DiscoPeer) SetEndpoints(
 
 		pe := newDiscoPeerEndpoint(p, endpointID, ep)
 
-		pe.Status().NotifyStatus(func(status DiscoPeerEndpointStatusReadOnly) {
+		go pe.Status().NotifyStatus(func(status DiscoPeerEndpointStatusReadOnly) {
 			p.endpointStatusMap.Store(endpointID, status)
 			p.updateStatus()
 		})
@@ -132,6 +133,26 @@ func (p *DiscoPeer) enqueueReceivedPacket(pkt EncryptedDiscoPacket) {
 	p.recvChan <- pkt
 }
 
+func (p *DiscoPeer) handlePing(pkt DiscoPacket) {
+	resp := DiscoPacket{
+		Header:            PongMessage,
+		SrcPublicDiscoKey: p.disco.publicKey,
+		EndpointID:        pkt.EndpointID,
+		ID:                pkt.ID,
+
+		Endpoint:  pkt.Endpoint,
+		SharedKey: p.sharedKey,
+	}
+
+	encrypted, ok := resp.Encrypt()
+
+	if !ok {
+		return
+	}
+
+	p.disco.sendChan <- encrypted
+}
+
 func (p *DiscoPeer) run() {
 	go func() {
 		for {
@@ -148,12 +169,20 @@ func (p *DiscoPeer) run() {
 				SharedKey: p.sharedKey,
 			}
 			if !decrypted.Decrypt(&pkt) {
+				log.Println("decrypt failed")
+				continue
+			}
+
+			if decrypted.Header == PingMessage {
+				p.handlePing(decrypted)
+
 				continue
 			}
 
 			ep, ok := p.endpoints.Load(decrypted.EndpointID)
 
 			if !ok {
+				log.Println("endpoint not found", decrypted.EndpointID)
 				continue
 			}
 

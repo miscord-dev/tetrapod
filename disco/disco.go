@@ -1,6 +1,7 @@
 package disco
 
 import (
+	"encoding/base64"
 	"fmt"
 	"log"
 	"net"
@@ -101,15 +102,16 @@ func (d *Disco) runReceiverV4() {
 
 		ok := pkt.Unmarshal(buf[:n])
 		if !ok {
+			fmt.Println("unmarshal failed")
 			continue
 		}
 
 		peer, ok := d.peers.Load(pkt.SrcPublicDiscoKey)
 		if !ok {
+			fmt.Println("finding peer failed", base64.StdEncoding.EncodeToString(pkt.SrcPublicDiscoKey[:]))
 			continue
 		}
 
-		fmt.Print(peer, pkt)
 		peer.enqueueReceivedPacket(pkt)
 	}
 }

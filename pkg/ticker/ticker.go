@@ -1,7 +1,6 @@
 package ticker
 
 import (
-	"fmt"
 	"io"
 	"sync"
 	"time"
@@ -101,7 +100,6 @@ func (t *ticker) run() {
 		runPrev = time.Now()
 
 		t.lock.Lock()
-		fmt.Println(runPrev, t.currentInterval)
 		t.currentInterval = time.Duration(float64(t.currentInterval) * t.multiplier)
 
 		if t.currentInterval > t.maxInterval {

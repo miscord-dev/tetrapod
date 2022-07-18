@@ -71,26 +71,6 @@ func (pe *DiscoPeerEndpoint) sendDiscoPing() {
 	pe.packetManager.AddPacket(pkt.ID)
 }
 
-func (pe *DiscoPeerEndpoint) handlePing(pkt DiscoPacket) {
-	resp := DiscoPacket{
-		Header:            PongMessage,
-		SrcPublicDiscoKey: pe.peer.disco.publicKey,
-		EndpointID:        pkt.EndpointID,
-		ID:                pkt.ID,
-
-		Endpoint:  pkt.Endpoint,
-		SharedKey: pe.peer.sharedKey,
-	}
-
-	encrypted, ok := resp.Encrypt()
-
-	if !ok {
-		return
-	}
-
-	pe.peer.disco.sendChan <- encrypted
-}
-
 func (pe *DiscoPeerEndpoint) handlePong(pkt DiscoPacket) {
 	rtt, ok := pe.packetManager.RecvAck(pkt.ID)
 
@@ -111,7 +91,7 @@ func (pe *DiscoPeerEndpoint) run() {
 			case pkt := <-pe.recvChan:
 				switch pkt.Header {
 				case PingMessage:
-					pe.handlePing(pkt)
+					// do nothing
 				case PongMessage:
 					pe.handlePong(pkt)
 				}
@@ -163,7 +143,13 @@ func (s *DiscoPeerEndpointStatus) NotifyStatus(fn func(status DiscoPeerEndpointS
 	s.cond.L.Unlock()
 	for {
 		s.cond.L.Lock()
+
 		curr := s.readonly()
+
+		if s.closed {
+			s.cond.L.Unlock()
+			return
+		}
 		if !curr.equalsTo(prev) {
 			s.cond.L.Unlock()
 			fn(curr)
@@ -176,6 +162,9 @@ func (s *DiscoPeerEndpointStatus) NotifyStatus(fn func(status DiscoPeerEndpointS
 		curr = s.readonly()
 		s.cond.L.Unlock()
 
+		if s.closed {
+			return
+		}
 		if !curr.equalsTo(prev) {
 			fn(curr)
 			prev = curr
