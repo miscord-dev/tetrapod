@@ -22,7 +22,7 @@ func (d *EncryptedDiscoPacket) Marshal() ([]byte, bool) {
 	switch d.Header {
 	case PingMessage, PongMessage:
 	default:
-		panic("unknown header type")
+		return nil, false
 	}
 
 	buf.WriteByte(byte(d.Header))
