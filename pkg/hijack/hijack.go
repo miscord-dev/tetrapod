@@ -5,6 +5,7 @@ import (
 	"net/netip"
 
 	"github.com/miscord-dev/toxfu/pkg/hijack/rawsocksend"
+	"github.com/miscord-dev/toxfu/pkg/types"
 )
 
 type Conn struct {
@@ -12,7 +13,7 @@ type Conn struct {
 	sender        *rawsocksend.Sender
 }
 
-var _ PacketConn = &Conn{}
+var _ types.PacketConn = &Conn{}
 
 func NewConn(port int) (res *Conn, err error) {
 	conn := &Conn{}

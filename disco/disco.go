@@ -7,8 +7,8 @@ import (
 	"net"
 	"net/netip"
 
-	"github.com/miscord-dev/toxfu/pkg/hijack"
 	"github.com/miscord-dev/toxfu/pkg/syncmap"
+	"github.com/miscord-dev/toxfu/pkg/types"
 	"github.com/miscord-dev/toxfu/pkg/wgkey"
 )
 
@@ -18,7 +18,7 @@ type Disco struct {
 
 	closed   chan struct{}
 	sendChan chan *EncryptedDiscoPacket
-	conn     hijack.PacketConn
+	conn     types.PacketConn
 	peers    syncmap.Map[wgkey.DiscoPublicKey, *DiscoPeer]
 }
 
@@ -36,12 +36,12 @@ func New(privateKey wgkey.DiscoPrivateKey, port int) (*Disco, error) {
 		publicKey:  privateKey.Public(),
 		closed:     make(chan struct{}),
 		sendChan:   make(chan *EncryptedDiscoPacket),
-		conn:       hijack.PacketConnFrom(conn),
+		conn:       types.PacketConnFrom(conn),
 		peers:      syncmap.Map[wgkey.DiscoPublicKey, *DiscoPeer]{},
 	}, nil
 }
 
-func NewFromPacketConn(privateKey wgkey.DiscoPrivateKey, packetConn hijack.PacketConn) (*Disco, error) {
+func NewFromPacketConn(privateKey wgkey.DiscoPrivateKey, packetConn types.PacketConn) (*Disco, error) {
 	return &Disco{
 		privateKey: privateKey,
 		publicKey:  privateKey.Public(),

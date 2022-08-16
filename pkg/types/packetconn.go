@@ -1,4 +1,4 @@
-package hijack
+package types
 
 import (
 	"fmt"
