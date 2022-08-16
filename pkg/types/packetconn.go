@@ -7,6 +7,8 @@ import (
 	"net/netip"
 )
 
+//go:generate mockgen -source=$GOFILE -package=mock_$GOPACKAGE -destination=./mock/mock_$GOFILE
+
 type PacketConn interface {
 	ReadFrom(p []byte) (n int, addr netip.AddrPort, err error)
 	WriteTo(p []byte, addr netip.AddrPort) (n int, err error)
