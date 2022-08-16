@@ -12,6 +12,8 @@ type Conn struct {
 	sender        *rawsocksend.Sender
 }
 
+var _ PacketConn = &Conn{}
+
 func NewConn(port int) (res *Conn, err error) {
 	conn := &Conn{}
 

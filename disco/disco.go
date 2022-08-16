@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/netip"
 
+	"github.com/miscord-dev/toxfu/pkg/hijack"
 	"github.com/miscord-dev/toxfu/pkg/syncmap"
 	"github.com/miscord-dev/toxfu/pkg/wgkey"
 )
@@ -16,13 +18,12 @@ type Disco struct {
 
 	closed   chan struct{}
 	sendChan chan *EncryptedDiscoPacket
-	connv4   *net.UDPConn
-	connv6   *net.UDPConn
+	conn     hijack.PacketConn
 	peers    syncmap.Map[wgkey.DiscoPublicKey, *DiscoPeer]
 }
 
 func New(privateKey wgkey.DiscoPrivateKey, port int) (*Disco, error) {
-	connv4, err := net.ListenUDP("udp4", &net.UDPAddr{
+	conn, err := net.ListenUDP("udp", &net.UDPAddr{
 		Port: port,
 	})
 
@@ -30,21 +31,23 @@ func New(privateKey wgkey.DiscoPrivateKey, port int) (*Disco, error) {
 		return nil, fmt.Errorf("failed to listen on :%d: %+v", port, err)
 	}
 
-	connv6, err := net.ListenUDP("udp6", &net.UDPAddr{
-		Port: port,
-	})
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to listen on :%d for IPv6: %+v", port, err)
-	}
-
 	return &Disco{
 		privateKey: privateKey,
 		publicKey:  privateKey.Public(),
 		closed:     make(chan struct{}),
 		sendChan:   make(chan *EncryptedDiscoPacket),
-		connv4:     connv4,
-		connv6:     connv6,
+		conn:       hijack.PacketConnFrom(conn),
+		peers:      syncmap.Map[wgkey.DiscoPublicKey, *DiscoPeer]{},
+	}, nil
+}
+
+func NewFromPacketConn(privateKey wgkey.DiscoPrivateKey, packetConn hijack.PacketConn) (*Disco, error) {
+	return &Disco{
+		privateKey: privateKey,
+		publicKey:  privateKey.Public(),
+		closed:     make(chan struct{}),
+		sendChan:   make(chan *EncryptedDiscoPacket),
+		conn:       packetConn,
 		peers:      syncmap.Map[wgkey.DiscoPublicKey, *DiscoPeer]{},
 	}, nil
 }
@@ -57,23 +60,15 @@ func (d *Disco) runSender() {
 			continue
 		}
 
-		if pkt.Endpoint.Addr().Is4() {
-			_, err := d.connv4.WriteToUDPAddrPort(b, pkt.Endpoint)
+		_, err := d.conn.WriteTo(b, pkt.Endpoint)
 
-			if err != nil {
-				log.Printf("sending msg to %v failed: %+v", pkt.Endpoint, err)
-			}
-		} else {
-			_, err := d.connv6.WriteToUDPAddrPort(b, pkt.Endpoint)
-
-			if err != nil {
-				log.Printf("sending msg to %v in IPv6 failed: %+v", pkt.Endpoint, err)
-			}
+		if err != nil {
+			log.Printf("sending msg to %v failed: %+v", pkt.Endpoint, err)
 		}
 	}
 }
 
-func (d *Disco) runReceiverV4() {
+func (d *Disco) runReceiver() {
 	buf := make([]byte, 2048)
 
 	for {
@@ -83,18 +78,18 @@ func (d *Disco) runReceiverV4() {
 		default:
 		}
 
-		n, addr, err := d.connv4.ReadFromUDPAddrPort(buf)
+		n, addr, err := d.conn.ReadFrom(buf)
 
 		select {
 		case <-d.closed:
 			return
 		default:
 		}
-
 		if err != nil {
 			log.Printf("reading from UDP failed: %+v", err)
 			continue
 		}
+		addr = netip.AddrPortFrom(addr.Addr().Unmap(), addr.Port())
 
 		pkt := EncryptedDiscoPacket{
 			Endpoint: addr,
@@ -116,51 +111,9 @@ func (d *Disco) runReceiverV4() {
 	}
 }
 
-func (d *Disco) runReceiverV6() {
-	buf := make([]byte, 2048)
-
-	for {
-		select {
-		case <-d.closed:
-			return
-		default:
-		}
-
-		n, addr, err := d.connv6.ReadFromUDPAddrPort(buf)
-
-		select {
-		case <-d.closed:
-			return
-		default:
-		}
-
-		if err != nil {
-			log.Printf("reading from UDP failed: %+v", err)
-			continue
-		}
-
-		pkt := EncryptedDiscoPacket{
-			Endpoint: addr,
-		}
-
-		ok := pkt.Unmarshal(buf[:n])
-		if !ok {
-			continue
-		}
-
-		peer, ok := d.peers.Load(pkt.SrcPublicDiscoKey)
-		if !ok {
-			continue
-		}
-
-		peer.enqueueReceivedPacket(pkt)
-	}
-}
-
 func (d *Disco) Start() {
 	go d.runSender()
-	go d.runReceiverV4()
-	go d.runReceiverV6()
+	go d.runReceiver()
 }
 
 func (d *Disco) AddPeer(pubKey wgkey.DiscoPublicKey) *DiscoPeer {
@@ -181,8 +134,7 @@ func (d *Disco) AddPeer(pubKey wgkey.DiscoPublicKey) *DiscoPeer {
 
 func (d *Disco) Close() error {
 	close(d.closed)
-	d.connv4.Close()
-	d.connv6.Close()
+	d.conn.Close()
 
 	return nil
 }

@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/miscord-dev/toxfu/pkg/pktmgr"
-	"github.com/miscord-dev/toxfu/pkg/ticker"
+	"github.com/miscord-dev/toxfu/disco/pktmgr"
+	"github.com/miscord-dev/toxfu/disco/ticker"
 )
 
 type DiscoPeerEndpoint struct {

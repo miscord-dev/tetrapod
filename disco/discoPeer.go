@@ -7,9 +7,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/miscord-dev/toxfu/disco/ticker"
 	"github.com/miscord-dev/toxfu/pkg/sets"
 	"github.com/miscord-dev/toxfu/pkg/syncmap"
-	"github.com/miscord-dev/toxfu/pkg/ticker"
 	"github.com/miscord-dev/toxfu/pkg/wgkey"
 )
 

@@ -28,8 +28,8 @@ func (m *Manager) AddPacket(id uint32) {
 	go func() {
 		<-after
 
-		m.m.Delete(id)
-		if m.dropCallback != nil {
+		_, loaded := m.m.LoadAndDelete(id)
+		if loaded && m.dropCallback != nil {
 			m.dropCallback()
 		}
 	}()
