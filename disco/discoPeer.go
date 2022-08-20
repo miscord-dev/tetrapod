@@ -283,6 +283,13 @@ func (s *DiscoPeerStatus) NotifyStatus(fn func(status DiscoPeerStatusReadOnly)) 
 	}
 }
 
+func (s *DiscoPeerStatus) Get() DiscoPeerStatusReadOnly {
+	s.cond.L.Lock()
+	defer s.cond.L.Unlock()
+
+	return s.readonly()
+}
+
 func (s *DiscoPeerStatus) setStatus(activeEndpoint netip.AddrPort, activeRTT time.Duration) {
 	s.cond.L.Lock()
 	defer s.cond.L.Unlock()

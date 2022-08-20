@@ -117,8 +117,8 @@ func (d *Disco) Start() {
 }
 
 func (d *Disco) AddPeer(pubKey wgkey.DiscoPublicKey) *DiscoPeer {
-	if _, ok := d.peers.Load(pubKey); ok {
-		return nil
+	if peer, ok := d.peers.Load(pubKey); ok {
+		return peer
 	}
 
 	peer := newDiscoPeer(d, pubKey)
@@ -130,6 +130,35 @@ func (d *Disco) AddPeer(pubKey wgkey.DiscoPublicKey) *DiscoPeer {
 	}
 
 	return actual
+}
+
+func (d *Disco) SetPeers(peers map[wgkey.DiscoPublicKey][]netip.AddrPort) {
+	for k, v := range peers {
+		peer := d.AddPeer(k)
+
+		peer.SetEndpoints(v)
+	}
+
+	d.peers.Range(func(key wgkey.DiscoPublicKey, value *DiscoPeer) bool {
+		_, ok := peers[key]
+
+		if !ok {
+			value.Close()
+		}
+
+		return true
+	})
+}
+
+func (d *Disco) GetAllStatuses() (res map[wgkey.DiscoPublicKey]DiscoPeerStatusReadOnly) {
+	res = make(map[wgkey.DiscoPublicKey]DiscoPeerStatusReadOnly)
+	d.peers.Range(func(key wgkey.DiscoPublicKey, value *DiscoPeer) bool {
+		res[key] = value.status.readonly()
+
+		return true
+	})
+
+	return res
 }
 
 func (d *Disco) Close() error {
