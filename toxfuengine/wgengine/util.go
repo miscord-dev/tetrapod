@@ -1,4 +1,4 @@
-package toxfuengine
+package wgengine
 
 import (
 	"sort"
@@ -31,8 +31,4 @@ func diffIPs(desired, current []netlink.Addr) (added, deleted []netlink.Addr) {
 	})
 
 	return
-}
-
-func ptr[T any](v T) *T {
-	return &v
 }

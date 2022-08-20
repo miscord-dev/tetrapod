@@ -20,6 +20,8 @@ type Disco struct {
 	sendChan chan *EncryptedDiscoPacket
 	conn     types.PacketConn
 	peers    syncmap.Map[wgkey.DiscoPublicKey, *DiscoPeer]
+
+	statusCallback func(pubKey wgkey.DiscoPublicKey, status DiscoPeerStatusReadOnly)
 }
 
 func New(privateKey wgkey.DiscoPrivateKey, port int) (*Disco, error) {
@@ -127,6 +129,10 @@ func (d *Disco) AddPeer(pubKey wgkey.DiscoPublicKey) *DiscoPeer {
 
 	if loaded {
 		peer.Close()
+	} else {
+		peer.Status().NotifyStatus(func(status DiscoPeerStatusReadOnly) {
+			d.statusCallback(pubKey, status)
+		})
 	}
 
 	return actual
@@ -166,4 +172,8 @@ func (d *Disco) Close() error {
 	d.conn.Close()
 
 	return nil
+}
+
+func (d *Disco) SetStatusCallback(fn func(pubKey wgkey.DiscoPublicKey, status DiscoPeerStatusReadOnly)) {
+	d.statusCallback = fn
 }
