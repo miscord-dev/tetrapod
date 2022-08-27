@@ -6,6 +6,7 @@ import (
 	"net/netip"
 
 	"github.com/miscord-dev/toxfu/disco"
+	"github.com/miscord-dev/toxfu/pkg/endpoints"
 	"github.com/miscord-dev/toxfu/pkg/hijack"
 	"github.com/miscord-dev/toxfu/pkg/splitconn"
 	"github.com/miscord-dev/toxfu/pkg/wgkey"
@@ -18,11 +19,19 @@ import (
 type ToxfuEngine interface {
 }
 
-type toxfuEngine struct {
-	wgEngine wgengine.Engine
-	disco    *disco.Disco
+type status struct {
+	atomic.Pointer[netip.Addr]
+}
 
-	currentConfig atomic.Pointer[Config]
+type toxfuEngine struct {
+	wgEngine  wgengine.Engine
+	disco     *disco.Disco
+	collector *endpoints.Collector
+
+	discoPrivateKey wgkey.DiscoPrivateKey
+	currentConfig   atomic.Pointer[Config]
+	endpoints       atomic.Pointer[[]netip.AddrPort]
+	callback        atomic.Pointer[func(PeerConfig)]
 
 	logger *zap.Logger
 }
@@ -50,19 +59,17 @@ func (e *toxfuEngine) init(ifaceName string, config *Config) error {
 	var err error
 
 	e.wgEngine, err = wgengine.New(ifaceName)
-
 	if err != nil {
 		return fmt.Errorf("failed to set up wgengine: %w", err)
 	}
 
 	discoPrivateKey, err := wgkey.New()
-
 	if err != nil {
 		return fmt.Errorf("failed to generate disco private key: %w", err)
 	}
+	e.discoPrivateKey = discoPrivateKey
 
 	hijackConn, err := hijack.NewConn(config.ListenPort)
-
 	if err != nil {
 		return fmt.Errorf("failed to initialize hijack conn: %w", err)
 	}
@@ -71,9 +78,21 @@ func (e *toxfuEngine) init(ifaceName string, config *Config) error {
 	discoConn := splitter.Add(func(b []byte, addr netip.AddrPort) bool {
 		return len(b) != 0 && (b[0]&0x80 != 0)
 	})
-	// stunPacket := splitter.Add(func(b []byte, addr netip.AddrPort) bool {
-	// 	return true
-	// })
+	stunConn := splitter.Add(func(b []byte, addr netip.AddrPort) bool {
+		return true
+	})
+
+	collector, err := endpoints.NewCollector(
+		stunConn,
+		config.ListenPort,
+		config.STUNEndpoint,
+		e.logger.With(zap.String("service", "endpoints_collector")),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to initialize collector: %w", err)
+	}
+	e.collector = collector
+	collector.Notify(e.notifyEndpoints)
 
 	e.disco, err = disco.NewFromPacketConn(discoPrivateKey, discoConn)
 
@@ -84,6 +103,49 @@ func (e *toxfuEngine) init(ifaceName string, config *Config) error {
 	e.disco.SetStatusCallback(e.discoStatusCallback)
 
 	return nil
+}
+
+func (e *toxfuEngine) notifyEndpoints(addrPorts []netip.AddrPort) {
+	e.endpoints.Store(&addrPorts)
+	e.notify()
+}
+
+func (e *toxfuEngine) notify() {
+	var endpoints []string
+	if ap := e.endpoints.Load(); ap != nil {
+		for _, e := range *ap {
+			endpoints = append(endpoints, e.String())
+		}
+	}
+
+	cfg := e.currentConfig.Load()
+
+	privKey, err := wgtypes.ParseKey(cfg.PrivateKey)
+	if err != nil {
+		e.logger.Error("failed to parse private key", zap.Error(err))
+
+		return
+	}
+
+	addresses := make([]string, 0, len(cfg.Addresses))
+	for _, a := range cfg.Addresses {
+		addresses = append(addresses, a.String())
+	}
+
+	peerConfig := PeerConfig{
+		Endpoints:      endpoints,
+		PublicKey:      privKey.PublicKey().String(),
+		PublicDiscoKey: e.discoPrivateKey.Public().String(),
+		Addresses:      addresses,
+		AllowedIPs:     addresses,
+	}
+
+	fn := e.callback.Load()
+	if fn == nil {
+		return
+	}
+
+	(*fn)(peerConfig)
 }
 
 func (e *toxfuEngine) discoStatusCallback(wgkey.DiscoPublicKey, disco.DiscoPeerStatusReadOnly) {
@@ -100,7 +162,6 @@ func (e *toxfuEngine) reconfigDisco(cfg *Config) {
 		logger := e.logger.With(
 			zap.String("pubkey", peer.PublicKey),
 			zap.String("pubDiscoKey", peer.PublicKey),
-			zap.Int64("id", peer.ID),
 		)
 
 		pubKey, err := wgkey.Parse(peer.PublicDiscoKey)
@@ -165,7 +226,6 @@ func (e *toxfuEngine) reconfig() error {
 		logger := e.logger.With(
 			zap.String("pubkey", peer.PublicKey),
 			zap.String("pubDiscoKey", peer.PublicKey),
-			zap.Int64("id", peer.ID),
 		)
 
 		wcfg, err := peer.toWGConfig()
@@ -184,14 +244,14 @@ func (e *toxfuEngine) reconfig() error {
 		wgPeerConfigs = append(wgPeerConfigs, *wcfg)
 	}
 
-	wgconfig := wgtypes.Config{
+	wgConfig := wgtypes.Config{
 		ListenPort:   ptr(cfg.ListenPort),
 		PrivateKey:   &privKey,
 		ReplacePeers: true,
 		Peers:        wgPeerConfigs,
 	}
 
-	err = e.wgEngine.Reconfig(wgconfig, cfg.Addresses)
+	err = e.wgEngine.Reconfig(wgConfig, cfg.Addresses)
 
 	if err != nil {
 		return fmt.Errorf("failed to reconfig wgengine: %w", err)
@@ -216,6 +276,9 @@ func (e *toxfuEngine) Close() error {
 	}
 	if e.wgEngine != nil {
 		e.wgEngine.Close()
+	}
+	if e.collector != nil {
+		e.collector.Close()
 	}
 
 	return nil

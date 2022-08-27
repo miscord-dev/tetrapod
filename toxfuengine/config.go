@@ -11,7 +11,6 @@ import (
 )
 
 type PeerConfig struct {
-	ID             int64
 	Endpoints      []string
 	PublicKey      string
 	PublicDiscoKey string
@@ -55,7 +54,8 @@ func (pc *PeerConfig) toWGConfig() (*wgtypes.PeerConfig, error) {
 type Config struct {
 	PrivateKey string
 	// ListenPort is immutable field
-	ListenPort int
-	Addresses  []netlink.Addr
-	Peers      []PeerConfig
+	ListenPort   int
+	STUNEndpoint string
+	Addresses    []netlink.Addr
+	Peers        []PeerConfig
 }
