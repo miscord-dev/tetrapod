@@ -73,6 +73,7 @@ func (e *toxfuEngine) init(ifaceName string, config *Config) error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize hijack conn: %w", err)
 	}
+	hijackConn.Logger = e.logger.With(zap.String("service", "hijack"))
 
 	splitter := splitconn.NewBundler(hijackConn)
 	discoConn := splitter.Add(func(b []byte, addr netip.AddrPort) bool {
@@ -141,7 +142,7 @@ func (e *toxfuEngine) notify() {
 	}
 
 	fn := e.callback.Load()
-	if fn == nil {
+	if fn == nil || *fn == nil {
 		return
 	}
 
@@ -268,6 +269,10 @@ func (e *toxfuEngine) Reconfig(cfg *Config) error {
 	}
 
 	return nil
+}
+
+func (e *toxfuEngine) Trigger() {
+	e.collector.Trigger()
 }
 
 func (e *toxfuEngine) Close() error {

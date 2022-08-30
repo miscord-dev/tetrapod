@@ -14,6 +14,7 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/miscord-dev/toxfu/pkg/syncpool"
+	"github.com/vishvananda/netlink"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -cc $BPF_CLANG -cflags $BPF_CFLAGS -strip $BPF_STRIP -type event bpf xdp.c -- -I/usr/include/x86_64-linux-gnu -Ilinux-5.18.14/tools/lib -Ixdp-tools/headers
@@ -22,6 +23,7 @@ type XDPReceiver struct {
 	iface         *net.Interface
 	objs          *bpfObjects
 	link          link.Link
+	xdpFd         int
 	ringReader    *ringbuf.Reader
 	addressFilter AddressFilter
 
@@ -88,6 +90,7 @@ func NewXDPReceiver(iface *net.Interface, port int, addressFilter AddressFilter)
 	if err != nil {
 		return nil, fmt.Errorf("could not attach XDP program: %w", err)
 	}
+	xdpReceiver.xdpFd = l.(*link.RawLink).FD()
 	xdpReceiver.link = l
 
 	rd, err := ringbuf.NewReader(objs.Events)
@@ -180,7 +183,7 @@ func (r *XDPReceiver) Recv(b []byte) (int, netip.AddrPort, error) {
 	var msg message
 	select {
 	case <-r.closed:
-		return 0, netip.AddrPort{}, fmt.Errorf("")
+		return 0, netip.AddrPort{}, fmt.Errorf("closed")
 	case msg = <-r.ch:
 	}
 
@@ -189,6 +192,25 @@ func (r *XDPReceiver) Recv(b []byte) (int, netip.AddrPort, error) {
 	copy(b, msg.payload[:msg.len])
 
 	return msg.len, msg.src, nil
+}
+
+func (r *XDPReceiver) RunHealthCheck() error {
+	link, err := netlink.LinkByName(r.iface.Name)
+	if err != nil {
+		return fmt.Errorf("failed to find link by name %s: %w", r.iface.Name, err)
+	}
+
+	xdp := link.Attrs().Xdp
+
+	if xdp == nil {
+		return fmt.Errorf("xdp is nil")
+	}
+
+	if xdp.Fd != r.xdpFd {
+		return fmt.Errorf("wrong xdp fd(actual: %v, expected: %v)", xdp.Fd, r.xdpFd)
+	}
+
+	return nil
 }
 
 func (r *XDPReceiver) Close() error {

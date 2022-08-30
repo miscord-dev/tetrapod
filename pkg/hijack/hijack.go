@@ -6,17 +6,21 @@ import (
 
 	"github.com/miscord-dev/toxfu/pkg/hijack/rawsocksend"
 	"github.com/miscord-dev/toxfu/pkg/types"
+	"go.uber.org/zap"
 )
 
 type Conn struct {
 	xdpController *xdpController
 	sender        *rawsocksend.Sender
+	Logger        *zap.Logger
 }
 
 var _ types.PacketConn = &Conn{}
 
 func NewConn(port int) (res *Conn, err error) {
-	conn := &Conn{}
+	conn := &Conn{
+		Logger: zap.NewNop(),
+	}
 
 	defer func() {
 		if err != nil {
@@ -37,6 +41,16 @@ func NewConn(port int) (res *Conn, err error) {
 	conn.sender = sender
 
 	return conn, nil
+}
+
+func (c *Conn) Refresh() {
+	if err := c.xdpController.refresh(); err != nil {
+		c.Logger.Error("failed to refresh xdp controller", zap.Error(err))
+	}
+
+	if err := c.sender.RefreshRouter(); err != nil {
+		c.Logger.Error("failed to refresh sender", zap.Error(err))
+	}
 }
 
 func (c *Conn) ReadFrom(p []byte) (n int, addr netip.AddrPort, err error) {

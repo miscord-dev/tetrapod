@@ -7,6 +7,7 @@ import (
 	"net/netip"
 	"sync"
 
+	"github.com/miscord-dev/toxfu/pkg/alarm"
 	"github.com/miscord-dev/toxfu/pkg/bgsingleflight"
 	"github.com/miscord-dev/toxfu/pkg/hijack/xdprecv"
 	"github.com/miscord-dev/toxfu/pkg/sets"
@@ -27,6 +28,7 @@ type xdpController struct {
 	ch     chan message
 	pool   *syncpool.Pool[message]
 	closed chan struct{}
+	alarm  *alarm.Alarm
 
 	lock  sync.RWMutex
 	addrs sets.Set[netip.Addr]
@@ -43,6 +45,7 @@ func newXDPController(port int) (*xdpController, error) {
 		ch:     make(chan message, 10),
 		pool:   pool,
 		closed: make(chan struct{}),
+		alarm:  alarm.New(),
 	}
 
 	if err := ctrl.refresh(); err != nil {
@@ -53,6 +56,8 @@ func newXDPController(port int) (*xdpController, error) {
 }
 
 func (c *xdpController) refresh() error {
+	c.alarm.WakeUpAll()
+
 	netAddrs, err := net.InterfaceAddrs()
 
 	if err != nil {
@@ -94,12 +99,25 @@ func (c *xdpController) refresh() error {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			go func() {
-				select {
-				case <-c.closed:
-				case <-ctx.Done():
-				}
+				s := c.alarm.Subscribe()
+				defer s.Close()
 
-				recver.Close()
+				for {
+					select {
+					case <-c.closed:
+					case <-ctx.Done():
+					case <-s.C():
+						err := recver.RunHealthCheck()
+
+						if err == nil {
+							continue
+						}
+					}
+
+					recver.Close()
+
+					return
+				}
 			}()
 
 			buf := make([]byte, 2048)
