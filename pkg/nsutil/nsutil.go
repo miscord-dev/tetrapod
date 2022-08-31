@@ -40,7 +40,7 @@ func CreateNamespace(name string) (netns.NsHandle, error) {
 func RunInNamespace(handle netns.NsHandle, fn func() error) (err error) {
 	runtime.LockOSThread()
 	defer func() {
-		if err != nil {
+		if err == nil {
 			runtime.UnlockOSThread()
 		}
 	}()

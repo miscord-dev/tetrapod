@@ -20,7 +20,9 @@ type Engine interface {
 var _ Engine = &wgEngine{}
 
 func New(ifaceName string) (Engine, error) {
-	e := wgEngine{}
+	e := wgEngine{
+		ifaceName: ifaceName,
+	}
 
 	if err := e.init(); err != nil {
 		return nil, fmt.Errorf("failed to init wgengine: %w", err)

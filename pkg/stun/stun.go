@@ -126,12 +126,29 @@ func lookup(endpoint string, isV6 bool) (netip.AddrPort, error) {
 		return netip.AddrPort{}, fmt.Errorf("failed to lookup ips: %w", err)
 	}
 
-	if len(ips) == 0 {
+	filtered := make([]net.IP, 0, len(ips))
+	for _, i := range ips {
+		v4 := i.To4()
+
+		if v4 == nil && isV6 {
+			filtered = append(filtered, i)
+
+			continue
+		}
+		if v4 != nil && !isV6 {
+			filtered = append(filtered, v4)
+
+			continue
+		}
+	}
+
+	if len(filtered) == 0 {
 		return netip.AddrPort{}, fmt.Errorf("unknown host: %s", endpoint)
 	}
-	idx := rand.Intn(len(ips))
 
-	addr, _ := netip.AddrFromSlice(ips[idx])
+	idx := rand.Intn(len(filtered))
+
+	addr, _ := netip.AddrFromSlice(filtered[idx])
 
 	return netip.AddrPortFrom(addr, uint16(port)), nil
 }

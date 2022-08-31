@@ -38,6 +38,7 @@ func New() (Monitor, error) {
 	}
 
 	m := &monitor{
+		alarm:  alarm.New(),
 		conn:   conn,
 		Logger: zap.NewNop(),
 	}
@@ -69,6 +70,7 @@ func (m *monitor) run() {
 			continue
 		}
 
+		m.alarm.WakeUpAll()
 	}
 }
 

@@ -17,36 +17,32 @@ import (
 )
 
 type ToxfuEngine interface {
-}
-
-type status struct {
-	atomic.Pointer[netip.Addr]
+	Notify(fn func(PeerConfig))
+	Reconfig(cfg *Config)
+	Trigger()
+	Close() error
 }
 
 type toxfuEngine struct {
-	wgEngine  wgengine.Engine
-	disco     *disco.Disco
-	collector *endpoints.Collector
+	wgEngine   wgengine.Engine
+	disco      *disco.Disco
+	hijackConn *hijack.Conn
+	collector  *endpoints.Collector
 
-	discoPrivateKey wgkey.DiscoPrivateKey
-	currentConfig   atomic.Pointer[Config]
-	endpoints       atomic.Pointer[[]netip.AddrPort]
-	callback        atomic.Pointer[func(PeerConfig)]
+	discoPrivateKey   wgkey.DiscoPrivateKey
+	currentConfig     atomic.Pointer[Config]
+	endpoints         atomic.Pointer[[]netip.AddrPort]
+	callback          atomic.Pointer[func(PeerConfig)]
+	reconfigTriggerCh chan struct{}
 
 	logger *zap.Logger
 }
 
 func New(ifaceName string, config *Config, logger *zap.Logger) (res ToxfuEngine, err error) {
 	engine := &toxfuEngine{
-		logger: logger,
+		logger:            logger,
+		reconfigTriggerCh: make(chan struct{}, 1),
 	}
-
-	wgEngine, err := wgengine.New(ifaceName)
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to init wgengine: %w", err)
-	}
-	engine.wgEngine = wgEngine
 
 	if err := engine.init(ifaceName, config); err != nil {
 		return nil, fmt.Errorf("failed to init engine: %w", err)
@@ -69,13 +65,13 @@ func (e *toxfuEngine) init(ifaceName string, config *Config) error {
 	}
 	e.discoPrivateKey = discoPrivateKey
 
-	hijackConn, err := hijack.NewConn(config.ListenPort)
+	e.hijackConn, err = hijack.NewConn(config.ListenPort)
 	if err != nil {
 		return fmt.Errorf("failed to initialize hijack conn: %w", err)
 	}
-	hijackConn.Logger = e.logger.With(zap.String("service", "hijack"))
+	e.hijackConn.Logger = e.logger.With(zap.String("service", "hijack"))
 
-	splitter := splitconn.NewBundler(hijackConn)
+	splitter := splitconn.NewBundler(e.hijackConn)
 	discoConn := splitter.Add(func(b []byte, addr netip.AddrPort) bool {
 		return len(b) != 0 && (b[0]&0x80 != 0)
 	})
@@ -93,20 +89,24 @@ func (e *toxfuEngine) init(ifaceName string, config *Config) error {
 		return fmt.Errorf("failed to initialize collector: %w", err)
 	}
 	e.collector = collector
-	collector.Notify(e.notifyEndpoints)
+	collector.Notify(e.endpointsCallback)
 
 	e.disco, err = disco.NewFromPacketConn(discoPrivateKey, discoConn)
-
 	if err != nil {
 		return fmt.Errorf("failed to initialize disco: %w", err)
 	}
 
 	e.disco.SetStatusCallback(e.discoStatusCallback)
 
+	e.currentConfig.Store(config)
+	e.triggerReconfig()
+
+	go e.runReconfig()
+
 	return nil
 }
 
-func (e *toxfuEngine) notifyEndpoints(addrPorts []netip.AddrPort) {
+func (e *toxfuEngine) endpointsCallback(addrPorts []netip.AddrPort) {
 	e.endpoints.Store(&addrPorts)
 	e.notify()
 }
@@ -149,11 +149,22 @@ func (e *toxfuEngine) notify() {
 	(*fn)(peerConfig)
 }
 
-func (e *toxfuEngine) discoStatusCallback(wgkey.DiscoPublicKey, disco.DiscoPeerStatusReadOnly) {
-	err := e.reconfig()
+func (e *toxfuEngine) Notify(fn func(PeerConfig)) {
+	e.callback.Store(&fn)
+}
 
-	if err != nil {
-		e.logger.Error("reconfig failed in status callback", zap.Error(err))
+func (e *toxfuEngine) triggerReconfig() {
+	select {
+	case e.reconfigTriggerCh <- struct{}{}:
+	default:
+	}
+}
+
+func (e *toxfuEngine) runReconfig() {
+	for range e.reconfigTriggerCh {
+		if err := e.reconfig(); err != nil {
+			e.logger.Error("reconfig failed", zap.Error(err))
+		}
 	}
 }
 
@@ -261,18 +272,18 @@ func (e *toxfuEngine) reconfig() error {
 	return nil
 }
 
-func (e *toxfuEngine) Reconfig(cfg *Config) error {
+func (e *toxfuEngine) discoStatusCallback(wgkey.DiscoPublicKey, disco.DiscoPeerStatusReadOnly) {
+	e.triggerReconfig()
+}
+
+func (e *toxfuEngine) Reconfig(cfg *Config) {
 	e.currentConfig.Store(cfg)
-
-	if err := e.reconfig(); err != nil {
-		return fmt.Errorf("reconfig failed: %w", err)
-	}
-
-	return nil
+	e.triggerReconfig()
 }
 
 func (e *toxfuEngine) Trigger() {
 	e.collector.Trigger()
+	e.triggerReconfig()
 }
 
 func (e *toxfuEngine) Close() error {
@@ -285,6 +296,10 @@ func (e *toxfuEngine) Close() error {
 	if e.collector != nil {
 		e.collector.Close()
 	}
+	if e.hijackConn != nil {
+		e.hijackConn.Close()
+	}
+	close(e.reconfigTriggerCh)
 
 	return nil
 }
