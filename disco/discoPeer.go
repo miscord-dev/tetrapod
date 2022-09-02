@@ -70,7 +70,7 @@ func (p *DiscoPeer) SetEndpoints(
 
 		pe := newDiscoPeerEndpoint(p, endpointID, ep)
 
-		go pe.Status().NotifyStatus(func(status DiscoPeerEndpointStatusReadOnly) {
+		pe.Status().NotifyStatus(func(status DiscoPeerEndpointStatusReadOnly) {
 			p.endpointStatusMap.Store(endpointID, status)
 			p.updateStatus()
 		})
@@ -246,6 +246,10 @@ type DiscoPeerStatusReadOnly struct {
 }
 
 func (s *DiscoPeerStatus) NotifyStatus(fn func(status DiscoPeerStatusReadOnly)) {
+	go s.notifyStatus(fn)
+}
+
+func (s *DiscoPeerStatus) notifyStatus(fn func(status DiscoPeerStatusReadOnly)) {
 	s.cond.L.Lock()
 	prev := s.readonly()
 	s.cond.L.Unlock()

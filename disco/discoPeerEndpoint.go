@@ -174,6 +174,10 @@ type DiscoPeerEndpointStatusReadOnly struct {
 }
 
 func (s *DiscoPeerEndpointStatus) NotifyStatus(fn func(status DiscoPeerEndpointStatusReadOnly)) {
+	go s.notifyStatus(fn)
+}
+
+func (s *DiscoPeerEndpointStatus) notifyStatus(fn func(status DiscoPeerEndpointStatusReadOnly)) {
 	s.cond.L.Lock()
 	prev := s.readonly()
 	s.cond.L.Unlock()

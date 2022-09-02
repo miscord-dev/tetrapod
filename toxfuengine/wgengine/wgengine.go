@@ -77,6 +77,26 @@ func (e *wgEngine) init() error {
 		return fmt.Errorf("failed to initialize handle for main ns: %w", err)
 	}
 
+	err = nsutil.RunInNamespace(e.ifaceNSHandle, func() error {
+		if err := netlink.LinkSetUp(&wg); err != nil {
+			return fmt.Errorf("ip link set %s up failed: %w", wg.LinkAttrs.Name, err)
+		}
+
+		lo, err := netlink.LinkByName("lo")
+		if err != nil {
+			return fmt.Errorf("finding lo device failed: %w", err)
+		}
+
+		if err := netlink.LinkSetUp(lo); err != nil {
+			return fmt.Errorf("ip link set lo up failed: %w", err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to set up interfaces: %w", err)
+	}
+
 	e.iface = &wg
 
 	return nil

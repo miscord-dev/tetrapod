@@ -18,8 +18,12 @@ type Conn struct {
 var _ types.PacketConn = &Conn{}
 
 func NewConn(port int) (res *Conn, err error) {
+	return NewConnWithLogger(port, zap.NewNop())
+}
+
+func NewConnWithLogger(port int, logger *zap.Logger) (res *Conn, err error) {
 	conn := &Conn{
-		Logger: zap.NewNop(),
+		Logger: logger,
 	}
 
 	defer func() {
@@ -33,6 +37,7 @@ func NewConn(port int) (res *Conn, err error) {
 		return nil, fmt.Errorf("failed to initialize xdp controller: %w", err)
 	}
 	conn.xdpController = ctrl
+	ctrl.Logger = conn.Logger.With(zap.String("component", "xdp_controller"))
 
 	sender, err := rawsocksend.NewSender(port)
 	if err != nil {

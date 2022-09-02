@@ -13,6 +13,7 @@ import (
 	"github.com/miscord-dev/toxfu/pkg/sets"
 	"github.com/miscord-dev/toxfu/pkg/sliceutil"
 	"github.com/miscord-dev/toxfu/pkg/syncpool"
+	"go.uber.org/zap"
 )
 
 type message struct {
@@ -32,6 +33,8 @@ type xdpController struct {
 
 	lock  sync.RWMutex
 	addrs sets.Set[netip.Addr]
+
+	Logger *zap.Logger
 }
 
 func newXDPController(port int) (*xdpController, error) {
@@ -46,6 +49,7 @@ func newXDPController(port int) (*xdpController, error) {
 		pool:   pool,
 		closed: make(chan struct{}),
 		alarm:  alarm.New(),
+		Logger: zap.NewNop(),
 	}
 
 	if err := ctrl.refresh(); err != nil {
@@ -90,9 +94,13 @@ func (c *xdpController) refresh() error {
 	for _, iface := range ifaces {
 		iface := iface
 		c.group.Run(iface.Name, func() {
+			logger := c.Logger.With(zap.String("interface", iface.Name))
+
 			recver, err := xdprecv.NewXDPReceiver(&iface, c.port, checker)
 
 			if err != nil {
+				logger.Error("failed to set up xdp receiver", zap.Error(err))
+
 				return
 			}
 
@@ -126,6 +134,8 @@ func (c *xdpController) refresh() error {
 				len, addrPort, err := recver.Recv(buf)
 
 				if err != nil {
+					logger.Error("failed to read packet", zap.Error(err))
+
 					return
 				}
 
@@ -161,6 +171,9 @@ func (c *xdpController) recv(b []byte) (len int, src netip.AddrPort, err error) 
 }
 
 func (c *xdpController) close() {
-	defer recover()
+	defer func() {
+		recover()
+	}()
+
 	close(c.closed)
 }

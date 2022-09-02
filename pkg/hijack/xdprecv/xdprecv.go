@@ -86,6 +86,7 @@ func NewXDPReceiver(iface *net.Interface, port int, addressFilter AddressFilter)
 	l, err := link.AttachXDP(link.XDPOptions{
 		Program:   objs.XdpParserFunc,
 		Interface: iface.Index,
+		Flags:     link.XDPGenericMode,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("could not attach XDP program: %w", err)

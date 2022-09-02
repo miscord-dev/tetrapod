@@ -65,11 +65,10 @@ func (e *toxfuEngine) init(ifaceName string, config *Config) error {
 	}
 	e.discoPrivateKey = discoPrivateKey
 
-	e.hijackConn, err = hijack.NewConn(config.ListenPort)
+	e.hijackConn, err = hijack.NewConnWithLogger(config.ListenPort, e.logger.With(zap.String("service", "hijack")))
 	if err != nil {
 		return fmt.Errorf("failed to initialize hijack conn: %w", err)
 	}
-	e.hijackConn.Logger = e.logger.With(zap.String("service", "hijack"))
 
 	splitter := splitconn.NewBundler(e.hijackConn)
 	discoConn := splitter.Add(func(b []byte, addr netip.AddrPort) bool {
@@ -95,7 +94,7 @@ func (e *toxfuEngine) init(ifaceName string, config *Config) error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize disco: %w", err)
 	}
-
+	e.disco.Start()
 	e.disco.SetStatusCallback(e.discoStatusCallback)
 
 	e.currentConfig.Store(config)
@@ -129,8 +128,19 @@ func (e *toxfuEngine) notify() {
 	}
 
 	addresses := make([]string, 0, len(cfg.Addresses))
+	allowedIPs := make([]string, 0, len(cfg.Addresses))
 	for _, a := range cfg.Addresses {
 		addresses = append(addresses, a.String())
+
+		addr, _ := netip.AddrFromSlice(a.IP)
+		addr = addr.Unmap()
+		bits := 32
+
+		if addr.Is6() {
+			bits = 128
+		}
+
+		allowedIPs = append(addresses, netip.PrefixFrom(addr, bits).String())
 	}
 
 	peerConfig := PeerConfig{
@@ -138,7 +148,7 @@ func (e *toxfuEngine) notify() {
 		PublicKey:      privKey.PublicKey().String(),
 		PublicDiscoKey: e.discoPrivateKey.Public().String(),
 		Addresses:      addresses,
-		AllowedIPs:     addresses,
+		AllowedIPs:     allowedIPs,
 	}
 
 	fn := e.callback.Load()
@@ -217,6 +227,8 @@ func (e *toxfuEngine) reconfig() error {
 	e.reconfigDisco(cfg)
 
 	discoStatuses := e.disco.GetAllStatuses()
+
+	e.logger.Info("disco status", zap.Any("disco", convertDiscoStatusesForJSON(discoStatuses)))
 
 	getDiscoStatus := func(pubKey string) (disco.DiscoPeerStatusReadOnly, bool) {
 		discoPubKey, err := wgkey.Parse(pubKey)
@@ -302,4 +314,14 @@ func (e *toxfuEngine) Close() error {
 	close(e.reconfigTriggerCh)
 
 	return nil
+}
+
+func convertDiscoStatusesForJSON(r map[wgkey.DiscoPublicKey]disco.DiscoPeerStatusReadOnly) map[string]interface{} {
+	m := map[string]interface{}{}
+
+	for k, v := range r {
+		m[k.String()] = v
+	}
+
+	return m
 }
