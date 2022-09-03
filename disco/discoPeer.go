@@ -44,7 +44,7 @@ func newDiscoPeer(d *Disco, pubKey wgkey.DiscoPublicKey) *DiscoPeer {
 			cond: sync.NewCond(&sync.Mutex{}),
 		},
 	}
-	dp.run()
+	go dp.run()
 
 	return dp
 }
@@ -185,39 +185,37 @@ func (p *DiscoPeer) handlePing(pkt DiscoPacket) {
 }
 
 func (p *DiscoPeer) run() {
-	go func() {
-		for {
-			var pkt EncryptedDiscoPacket
-			select {
-			case <-p.closed:
-				return
-			case <-p.disco.closed:
-				return
-			case pkt = <-p.recvChan:
-			}
-
-			decrypted := DiscoPacket{
-				SharedKey: p.sharedKey,
-			}
-			if !decrypted.Decrypt(&pkt) {
-				continue
-			}
-
-			if decrypted.Header == PingMessage {
-				p.handlePing(decrypted)
-
-				continue
-			}
-
-			ep, ok := p.endpoints.Load(decrypted.EndpointID)
-
-			if !ok {
-				continue
-			}
-
-			ep.enqueueReceivedPacket(decrypted)
+	for {
+		var pkt EncryptedDiscoPacket
+		select {
+		case <-p.closed:
+			return
+		case <-p.disco.closed:
+			return
+		case pkt = <-p.recvChan:
 		}
-	}()
+
+		decrypted := DiscoPacket{
+			SharedKey: p.sharedKey,
+		}
+		if !decrypted.Decrypt(&pkt) {
+			continue
+		}
+
+		if decrypted.Header == PingMessage {
+			p.handlePing(decrypted)
+
+			continue
+		}
+
+		ep, ok := p.endpoints.Load(decrypted.EndpointID)
+
+		if !ok {
+			continue
+		}
+
+		ep.enqueueReceivedPacket(decrypted)
+	}
 }
 
 func (p *DiscoPeer) Close() error {
