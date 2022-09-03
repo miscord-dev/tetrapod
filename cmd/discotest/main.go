@@ -42,8 +42,6 @@ func main() {
 		panic(err)
 	}
 
-	d.Start()
-
 	peer := d.AddPeer(peerKey)
 
 	peer.SetEndpoints([]netip.AddrPort{

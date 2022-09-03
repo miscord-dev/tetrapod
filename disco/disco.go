@@ -10,6 +10,7 @@ import (
 	"github.com/miscord-dev/toxfu/pkg/syncmap"
 	"github.com/miscord-dev/toxfu/pkg/types"
 	"github.com/miscord-dev/toxfu/pkg/wgkey"
+	"go.uber.org/zap"
 )
 
 type Disco struct {
@@ -22,6 +23,8 @@ type Disco struct {
 	peers    syncmap.Map[wgkey.DiscoPublicKey, *DiscoPeer]
 
 	statusCallback func(pubKey wgkey.DiscoPublicKey, status DiscoPeerStatusReadOnly)
+
+	Logger *zap.Logger
 }
 
 func New(privateKey wgkey.DiscoPrivateKey, port int) (*Disco, error) {
@@ -33,25 +36,23 @@ func New(privateKey wgkey.DiscoPrivateKey, port int) (*Disco, error) {
 		return nil, fmt.Errorf("failed to listen on :%d: %+v", port, err)
 	}
 
-	return &Disco{
-		privateKey: privateKey,
-		publicKey:  privateKey.Public(),
-		closed:     make(chan struct{}),
-		sendChan:   make(chan *EncryptedDiscoPacket),
-		conn:       types.PacketConnFrom(conn),
-		peers:      syncmap.Map[wgkey.DiscoPublicKey, *DiscoPeer]{},
-	}, nil
+	return NewFromPacketConn(privateKey, types.PacketConnFrom(conn))
 }
 
 func NewFromPacketConn(privateKey wgkey.DiscoPrivateKey, packetConn types.PacketConn) (*Disco, error) {
-	return &Disco{
+	d := &Disco{
 		privateKey: privateKey,
 		publicKey:  privateKey.Public(),
 		closed:     make(chan struct{}),
 		sendChan:   make(chan *EncryptedDiscoPacket),
 		conn:       packetConn,
 		peers:      syncmap.Map[wgkey.DiscoPublicKey, *DiscoPeer]{},
-	}, nil
+	}
+
+	go d.runSender()
+	go d.runReceiver()
+
+	return d, nil
 }
 
 func (d *Disco) runSender() {
@@ -111,11 +112,6 @@ func (d *Disco) runReceiver() {
 
 		peer.enqueueReceivedPacket(pkt)
 	}
-}
-
-func (d *Disco) Start() {
-	go d.runSender()
-	go d.runReceiver()
 }
 
 func (d *Disco) AddPeer(pubKey wgkey.DiscoPublicKey) *DiscoPeer {

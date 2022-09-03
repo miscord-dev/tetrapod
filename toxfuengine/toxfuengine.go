@@ -94,7 +94,6 @@ func (e *toxfuEngine) init(ifaceName string, config *Config) error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize disco: %w", err)
 	}
-	e.disco.Start()
 	e.disco.SetStatusCallback(e.discoStatusCallback)
 
 	e.currentConfig.Store(config)
