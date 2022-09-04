@@ -3,7 +3,6 @@ package disco
 import (
 	"encoding/base64"
 	"fmt"
-	"log"
 	"net"
 	"net/netip"
 
@@ -90,7 +89,7 @@ func (d *Disco) runReceiver() {
 		default:
 		}
 		if err != nil {
-			log.Printf("reading from UDP failed: %+v", err)
+			d.logger.Debug("reading from UDP failed", zap.Error(err))
 			continue
 		}
 		addr = netip.AddrPortFrom(addr.Addr().Unmap(), addr.Port())
@@ -101,13 +100,13 @@ func (d *Disco) runReceiver() {
 
 		ok := pkt.Unmarshal(buf[:n])
 		if !ok {
-			d.logger.Info("unmarshal failed", zap.String("key", base64.StdEncoding.EncodeToString(pkt.SrcPublicDiscoKey[:])))
+			d.logger.Debug("unmarshal failed", zap.String("key", base64.StdEncoding.EncodeToString(pkt.SrcPublicDiscoKey[:])))
 			continue
 		}
 
 		peer, ok := d.peers.Load(pkt.SrcPublicDiscoKey)
 		if !ok {
-			d.logger.Info("finding peer failed", zap.String("key", base64.StdEncoding.EncodeToString(pkt.SrcPublicDiscoKey[:])))
+			d.logger.Debug("finding peer failed", zap.String("key", base64.StdEncoding.EncodeToString(pkt.SrcPublicDiscoKey[:])))
 			continue
 		}
 
