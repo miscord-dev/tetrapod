@@ -129,14 +129,7 @@ func (e *toxfuEngine) notify() {
 		addresses = append(addresses, a.String())
 
 		addr, _ := netip.AddrFromSlice(a.IP)
-		addr = addr.Unmap()
-		bits := 32
-
-		if addr.Is6() {
-			bits = 128
-		}
-
-		allowedIPs = append(addresses, netip.PrefixFrom(addr, bits).String())
+		allowedIPs = append(allowedIPs, toAddrPrefix(addr).String())
 	}
 
 	peerConfig := PeerConfig{

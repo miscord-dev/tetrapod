@@ -1,6 +1,7 @@
 package toxfuengine
 
 import (
+	"net/netip"
 	"sort"
 
 	"github.com/vishvananda/netlink"
@@ -31,6 +32,17 @@ func diffIPs(desired, current []netlink.Addr) (added, deleted []netlink.Addr) {
 	})
 
 	return
+}
+
+func toAddrPrefix(addr netip.Addr) netip.Prefix {
+	addr = addr.Unmap()
+	bits := 32
+
+	if addr.Is6() {
+		bits = 128
+	}
+
+	return netip.PrefixFrom(addr, bits)
 }
 
 func ptr[T any](v T) *T {
