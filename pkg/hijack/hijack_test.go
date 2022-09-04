@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestHijack(t *testing.T) {
@@ -38,7 +39,9 @@ func TestHijack(t *testing.T) {
 		Port: oppositePort,
 	}
 
-	conn, err := NewConn(port)
+	logger := zaptest.NewLogger(t)
+
+	conn, err := NewConnWithLogger(port, logger)
 
 	if err != nil {
 		t.Fatal(err)

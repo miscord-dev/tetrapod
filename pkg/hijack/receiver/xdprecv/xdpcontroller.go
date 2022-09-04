@@ -1,4 +1,4 @@
-package hijack
+package xdprecv
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 
 	"github.com/miscord-dev/toxfu/pkg/alarm"
 	"github.com/miscord-dev/toxfu/pkg/bgsingleflight"
-	"github.com/miscord-dev/toxfu/pkg/hijack/xdprecv"
+	"github.com/miscord-dev/toxfu/pkg/hijack/receiver/xdprecv/xdp"
 	"github.com/miscord-dev/toxfu/pkg/sets"
 	"github.com/miscord-dev/toxfu/pkg/sliceutil"
 	"github.com/miscord-dev/toxfu/pkg/syncpool"
@@ -37,7 +37,7 @@ type xdpController struct {
 	Logger *zap.Logger
 }
 
-func newXDPController(port int) (*xdpController, error) {
+func NewXDPController(port int) (*xdpController, error) {
 	pool := syncpool.NewPool[message]()
 	pool.New = func() message {
 		return message{}
@@ -52,14 +52,14 @@ func newXDPController(port int) (*xdpController, error) {
 		Logger: zap.NewNop(),
 	}
 
-	if err := ctrl.refresh(); err != nil {
+	if err := ctrl.Refresh(); err != nil {
 		return nil, fmt.Errorf("refresh failed: %w", err)
 	}
 
 	return ctrl, nil
 }
 
-func (c *xdpController) refresh() error {
+func (c *xdpController) Refresh() error {
 	c.alarm.WakeUpAll()
 
 	netAddrs, err := net.InterfaceAddrs()
@@ -96,7 +96,7 @@ func (c *xdpController) refresh() error {
 		c.group.Run(iface.Name, func() {
 			logger := c.Logger.With(zap.String("interface", iface.Name))
 
-			recver, err := xdprecv.NewXDPReceiver(&iface, c.port, checker)
+			recver, err := xdp.NewXDPReceiver(&iface, c.port, checker)
 
 			if err != nil {
 				logger.Error("failed to set up xdp receiver", zap.Error(err))
@@ -155,7 +155,7 @@ func (c *xdpController) refresh() error {
 	return nil
 }
 
-func (c *xdpController) recv(b []byte) (len int, src netip.AddrPort, err error) {
+func (c *xdpController) Recv(b []byte) (len int, src netip.AddrPort, err error) {
 	var msg message
 	select {
 	case <-c.closed:
@@ -170,10 +170,12 @@ func (c *xdpController) recv(b []byte) (len int, src netip.AddrPort, err error) 
 	return msg.len, msg.src, nil
 }
 
-func (c *xdpController) close() {
+func (c *xdpController) Close() error {
 	defer func() {
 		recover()
 	}()
 
 	close(c.closed)
+
+	return nil
 }

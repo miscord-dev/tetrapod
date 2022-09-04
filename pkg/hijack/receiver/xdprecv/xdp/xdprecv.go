@@ -1,4 +1,4 @@
-package xdprecv
+package xdp
 
 import (
 	"bytes"

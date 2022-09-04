@@ -10,6 +10,7 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/routing"
+	"github.com/miscord-dev/toxfu/pkg/hijack/sender"
 	"go.uber.org/zap"
 )
 
@@ -22,6 +23,8 @@ type Sender struct {
 
 	logger *zap.Logger
 }
+
+var _ sender.Sender = &Sender{}
 
 func NewSender(port int) (res *Sender, err error) {
 	sender := &Sender{
@@ -49,7 +52,7 @@ func NewSender(port int) (res *Sender, err error) {
 	}
 	sender.fdv6 = fdv6
 
-	if err := sender.RefreshRouter(); err != nil {
+	if err := sender.Refresh(); err != nil {
 		return nil, fmt.Errorf("failed to refresh router: %w", err)
 	}
 
@@ -67,7 +70,7 @@ func (s *Sender) Close() error {
 	return nil
 }
 
-func (s *Sender) RefreshRouter() error {
+func (s *Sender) Refresh() error {
 	router, err := routing.New()
 
 	if err != nil {
