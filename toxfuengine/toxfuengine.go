@@ -90,10 +90,7 @@ func (e *toxfuEngine) init(ifaceName string, config *Config) error {
 	e.collector = collector
 	collector.Notify(e.endpointsCallback)
 
-	e.disco, err = disco.NewFromPacketConn(discoPrivateKey, discoConn)
-	if err != nil {
-		return fmt.Errorf("failed to initialize disco: %w", err)
-	}
+	e.disco = disco.NewFromPacketConn(discoPrivateKey, discoConn, e.logger)
 	e.disco.SetStatusCallback(e.discoStatusCallback)
 
 	e.currentConfig.Store(config)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/miscord-dev/toxfu/disco/pktmgr"
 	"github.com/miscord-dev/toxfu/disco/ticker"
+	"go.uber.org/zap"
 )
 
 type DiscoPeerEndpoint struct {
@@ -25,9 +26,11 @@ type DiscoPeerEndpoint struct {
 	priority          ticker.Priority
 	status            *DiscoPeerEndpointStatus
 	lastReinitialized time.Time
+
+	logger *zap.Logger
 }
 
-func newDiscoPeerEndpoint(ds *DiscoPeer, endpointID uint32, endpoint netip.AddrPort) *DiscoPeerEndpoint {
+func newDiscoPeerEndpoint(ds *DiscoPeer, endpointID uint32, endpoint netip.AddrPort, logger *zap.Logger) *DiscoPeerEndpoint {
 	ep := &DiscoPeerEndpoint{
 		recvChan:   make(chan DiscoPacket, 1),
 		closed:     make(chan struct{}),
@@ -40,6 +43,11 @@ func newDiscoPeerEndpoint(ds *DiscoPeer, endpointID uint32, endpoint netip.AddrP
 		status: &DiscoPeerEndpointStatus{
 			cond: sync.NewCond(&sync.Mutex{}),
 		},
+
+		logger: logger.With(
+			zap.String("service", "disco_peer_endpoint"),
+			zap.String("endpoint", endpoint.String()),
+		),
 	}
 	ep.packetManager = pktmgr.New(2*time.Second, ep.dropCallback)
 	ep.run()

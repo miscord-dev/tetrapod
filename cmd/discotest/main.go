@@ -8,6 +8,7 @@ import (
 
 	"github.com/miscord-dev/toxfu/disco"
 	"github.com/miscord-dev/toxfu/pkg/wgkey"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -36,7 +37,9 @@ func main() {
 		panic(err)
 	}
 
-	d, err := disco.New(privKey, port)
+	logger, _ := zap.NewProduction()
+
+	d, err := disco.New(privKey, port, logger)
 
 	if err != nil {
 		panic(err)

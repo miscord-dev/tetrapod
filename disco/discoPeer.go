@@ -11,6 +11,7 @@ import (
 	"github.com/miscord-dev/toxfu/pkg/sets"
 	"github.com/miscord-dev/toxfu/pkg/syncmap"
 	"github.com/miscord-dev/toxfu/pkg/wgkey"
+	"go.uber.org/zap"
 )
 
 type DiscoPeer struct {
@@ -28,9 +29,11 @@ type DiscoPeer struct {
 
 	endpointStatusMap syncmap.Map[uint32, DiscoPeerEndpointStatusReadOnly]
 	status            *DiscoPeerStatus
+
+	logger *zap.Logger
 }
 
-func newDiscoPeer(d *Disco, pubKey wgkey.DiscoPublicKey) *DiscoPeer {
+func newDiscoPeer(d *Disco, pubKey wgkey.DiscoPublicKey, logger *zap.Logger) *DiscoPeer {
 	dp := &DiscoPeer{
 		closed:               make(chan struct{}),
 		disco:                d,
@@ -43,7 +46,12 @@ func newDiscoPeer(d *Disco, pubKey wgkey.DiscoPublicKey) *DiscoPeer {
 		status: &DiscoPeerStatus{
 			cond: sync.NewCond(&sync.Mutex{}),
 		},
+		logger: logger.With(
+			zap.String("service", "disco_peer"),
+			zap.String("public_disco_key", pubKey.String()),
+		),
 	}
+
 	go dp.run()
 
 	return dp
@@ -68,7 +76,7 @@ func (p *DiscoPeer) SetEndpoints(
 
 		renewID()
 
-		pe := newDiscoPeerEndpoint(p, endpointID, ep)
+		pe := newDiscoPeerEndpoint(p, endpointID, ep, p.logger)
 
 		pe.Status().NotifyStatus(func(status DiscoPeerEndpointStatusReadOnly) {
 			p.endpointStatusMap.Store(endpointID, status)

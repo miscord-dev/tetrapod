@@ -24,10 +24,10 @@ type Disco struct {
 
 	statusCallback func(pubKey wgkey.DiscoPublicKey, status DiscoPeerStatusReadOnly)
 
-	Logger *zap.Logger
+	logger *zap.Logger
 }
 
-func New(privateKey wgkey.DiscoPrivateKey, port int) (*Disco, error) {
+func New(privateKey wgkey.DiscoPrivateKey, port int, logger *zap.Logger) (*Disco, error) {
 	conn, err := net.ListenUDP("udp", &net.UDPAddr{
 		Port: port,
 	})
@@ -36,10 +36,10 @@ func New(privateKey wgkey.DiscoPrivateKey, port int) (*Disco, error) {
 		return nil, fmt.Errorf("failed to listen on :%d: %+v", port, err)
 	}
 
-	return NewFromPacketConn(privateKey, types.PacketConnFrom(conn))
+	return NewFromPacketConn(privateKey, types.PacketConnFrom(conn), logger), nil
 }
 
-func NewFromPacketConn(privateKey wgkey.DiscoPrivateKey, packetConn types.PacketConn) (*Disco, error) {
+func NewFromPacketConn(privateKey wgkey.DiscoPrivateKey, packetConn types.PacketConn, logger *zap.Logger) *Disco {
 	d := &Disco{
 		privateKey: privateKey,
 		publicKey:  privateKey.Public(),
@@ -47,12 +47,13 @@ func NewFromPacketConn(privateKey wgkey.DiscoPrivateKey, packetConn types.Packet
 		sendChan:   make(chan *EncryptedDiscoPacket),
 		conn:       packetConn,
 		peers:      syncmap.Map[wgkey.DiscoPublicKey, *DiscoPeer]{},
+		logger:     logger.With(zap.String("service", "disco")),
 	}
 
 	go d.runSender()
 	go d.runReceiver()
 
-	return d, nil
+	return d
 }
 
 func (d *Disco) runSender() {
@@ -66,7 +67,7 @@ func (d *Disco) runSender() {
 		_, err := d.conn.WriteTo(b, pkt.Endpoint)
 
 		if err != nil {
-			log.Printf("sending msg to %v failed: %+v", pkt.Endpoint, err)
+			d.logger.Info("sending msg failed", zap.String("endpoint", pkt.Endpoint.String()), zap.Error(err))
 		}
 	}
 }
@@ -100,13 +101,13 @@ func (d *Disco) runReceiver() {
 
 		ok := pkt.Unmarshal(buf[:n])
 		if !ok {
-			log.Println("unmarshal failed")
+			d.logger.Info("unmarshal failed", zap.String("key", base64.StdEncoding.EncodeToString(pkt.SrcPublicDiscoKey[:])))
 			continue
 		}
 
 		peer, ok := d.peers.Load(pkt.SrcPublicDiscoKey)
 		if !ok {
-			log.Println("finding peer failed", base64.StdEncoding.EncodeToString(pkt.SrcPublicDiscoKey[:]))
+			d.logger.Info("finding peer failed", zap.String("key", base64.StdEncoding.EncodeToString(pkt.SrcPublicDiscoKey[:])))
 			continue
 		}
 
@@ -119,7 +120,7 @@ func (d *Disco) AddPeer(pubKey wgkey.DiscoPublicKey) *DiscoPeer {
 		return peer
 	}
 
-	peer := newDiscoPeer(d, pubKey)
+	peer := newDiscoPeer(d, pubKey, d.logger)
 
 	actual, loaded := d.peers.LoadOrStore(pubKey, peer)
 
