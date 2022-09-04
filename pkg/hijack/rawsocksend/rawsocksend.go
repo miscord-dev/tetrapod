@@ -191,7 +191,7 @@ func (s *Sender) sendIPv6(dst netip.AddrPort, payload []byte) error {
 
 	addr := syscall.SockaddrInet6{
 		Addr: dst.Addr().As16(),
-		Port: int(dst.Port()),
+		Port: 0,
 	}
 
 	err = syscall.Sendto(s.fdv6, buf.Bytes(), 0, &addr)
