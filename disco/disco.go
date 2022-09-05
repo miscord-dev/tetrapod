@@ -19,7 +19,7 @@ type Disco struct {
 	closed   chan struct{}
 	sendChan chan *EncryptedDiscoPacket
 	conn     types.PacketConn
-	peers    syncmap.Map[wgkey.DiscoPublicKey, *DiscoPeer]
+	peers    syncmap.Map[wgkey.DiscoPublicKey, DiscoPeer]
 
 	statusCallback func(pubKey wgkey.DiscoPublicKey, status DiscoPeerStatusReadOnly)
 
@@ -45,7 +45,7 @@ func NewFromPacketConn(privateKey wgkey.DiscoPrivateKey, packetConn types.Packet
 		closed:     make(chan struct{}),
 		sendChan:   make(chan *EncryptedDiscoPacket),
 		conn:       packetConn,
-		peers:      syncmap.Map[wgkey.DiscoPublicKey, *DiscoPeer]{},
+		peers:      syncmap.Map[wgkey.DiscoPublicKey, DiscoPeer]{},
 		logger:     logger.With(zap.String("service", "disco")),
 	}
 
@@ -110,11 +110,11 @@ func (d *Disco) runReceiver() {
 			continue
 		}
 
-		peer.enqueueReceivedPacket(pkt)
+		peer.EnqueueReceivedPacket(pkt)
 	}
 }
 
-func (d *Disco) AddPeer(pubKey wgkey.DiscoPublicKey) *DiscoPeer {
+func (d *Disco) AddPeer(pubKey wgkey.DiscoPublicKey) DiscoPeer {
 	if peer, ok := d.peers.Load(pubKey); ok {
 		return peer
 	}
@@ -141,7 +141,7 @@ func (d *Disco) SetPeers(peers map[wgkey.DiscoPublicKey][]netip.AddrPort) {
 		peer.SetEndpoints(v)
 	}
 
-	d.peers.Range(func(key wgkey.DiscoPublicKey, value *DiscoPeer) bool {
+	d.peers.Range(func(key wgkey.DiscoPublicKey, value DiscoPeer) bool {
 		_, ok := peers[key]
 
 		if !ok {
@@ -154,13 +154,17 @@ func (d *Disco) SetPeers(peers map[wgkey.DiscoPublicKey][]netip.AddrPort) {
 
 func (d *Disco) GetAllStatuses() (res map[wgkey.DiscoPublicKey]DiscoPeerStatusReadOnly) {
 	res = make(map[wgkey.DiscoPublicKey]DiscoPeerStatusReadOnly)
-	d.peers.Range(func(key wgkey.DiscoPublicKey, value *DiscoPeer) bool {
-		res[key] = value.status.readonly()
+	d.peers.Range(func(key wgkey.DiscoPublicKey, value DiscoPeer) bool {
+		res[key] = value.Status().Get()
 
 		return true
 	})
 
 	return res
+}
+
+func (d *Disco) Send(pkt *EncryptedDiscoPacket) {
+	d.sendChan <- pkt
 }
 
 func (d *Disco) Close() error {

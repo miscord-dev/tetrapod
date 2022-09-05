@@ -14,7 +14,19 @@ import (
 	"go.uber.org/zap"
 )
 
-type DiscoPeer struct {
+type DiscoPeer interface {
+	EnqueueReceivedPacket(pkt EncryptedDiscoPacket)
+	SetEndpoints(endpoints []netip.AddrPort)
+	Status() DiscoPeerStatus
+	Close() error
+}
+
+type DiscoPeerStatus interface {
+	Get() DiscoPeerStatusReadOnly
+	NotifyStatus(fn func(status DiscoPeerStatusReadOnly))
+}
+
+type discoPeer struct {
 	closed chan struct{}
 
 	disco    *Disco
@@ -25,25 +37,25 @@ type DiscoPeer struct {
 
 	endpointIDCounter    uint32
 	endpointToEndpointID syncmap.Map[netip.AddrPort, uint32]
-	endpoints            syncmap.Map[uint32, *DiscoPeerEndpoint]
+	endpoints            syncmap.Map[uint32, DiscoPeerEndpoint]
 
 	endpointStatusMap syncmap.Map[uint32, DiscoPeerEndpointStatusReadOnly]
-	status            *DiscoPeerStatus
+	status            *discoPeerStatus
 
 	logger *zap.Logger
 }
 
-func newDiscoPeer(d *Disco, pubKey wgkey.DiscoPublicKey, logger *zap.Logger) *DiscoPeer {
-	dp := &DiscoPeer{
+func newDiscoPeer(d *Disco, pubKey wgkey.DiscoPublicKey, logger *zap.Logger) DiscoPeer {
+	dp := &discoPeer{
 		closed:               make(chan struct{}),
 		disco:                d,
 		recvChan:             make(chan EncryptedDiscoPacket),
 		srcPublicDiscoKey:    pubKey,
 		sharedKey:            d.privateKey.Shared(pubKey),
 		endpointToEndpointID: syncmap.Map[netip.AddrPort, uint32]{},
-		endpoints:            syncmap.Map[uint32, *DiscoPeerEndpoint]{},
+		endpoints:            syncmap.Map[uint32, DiscoPeerEndpoint]{},
 		endpointStatusMap:    syncmap.Map[uint32, DiscoPeerEndpointStatusReadOnly]{},
-		status: &DiscoPeerStatus{
+		status: &discoPeerStatus{
 			cond: sync.NewCond(&sync.Mutex{}),
 		},
 		logger: logger.With(
@@ -57,9 +69,28 @@ func newDiscoPeer(d *Disco, pubKey wgkey.DiscoPublicKey, logger *zap.Logger) *Di
 	return dp
 }
 
-func (p *DiscoPeer) SetEndpoints(
+func (p *discoPeer) Disco() *Disco {
+	return p.disco
+}
+
+func (p *discoPeer) SharedKey() wgkey.DiscoSharedKey {
+	return p.sharedKey
+}
+
+func (p *discoPeer) ClosedCh() <-chan struct{} {
+	return p.closed
+}
+
+func (p *discoPeer) SetEndpoints(
 	endpoints []netip.AddrPort,
 ) {
+	select {
+	case <-p.closed:
+		p.closeAllEndpoints()
+		return
+	default:
+	}
+
 	id := atomic.AddUint32(&p.endpointIDCounter, 1)
 
 	// Assign next DESID
@@ -76,7 +107,14 @@ func (p *DiscoPeer) SetEndpoints(
 
 		renewID()
 
-		pe := newDiscoPeerEndpoint(p, endpointID, ep, p.logger)
+		pe := newDiscoPeerEndpoint(
+			endpointID,
+			ep,
+			p.srcPublicDiscoKey,
+			p.sharedKey,
+			p.disco,
+			p.logger,
+		)
 
 		pe.Status().NotifyStatus(func(status DiscoPeerEndpointStatusReadOnly) {
 			p.endpointStatusMap.Store(endpointID, status)
@@ -86,10 +124,17 @@ func (p *DiscoPeer) SetEndpoints(
 		p.endpoints.Store(endpointID, pe)
 	}
 
+	select {
+	case <-p.closed:
+		p.closeAllEndpoints()
+		return
+	default:
+	}
+
 	endpointSet := sets.FromSlice(endpoints)
 
-	p.endpoints.Range(func(key uint32, value *DiscoPeerEndpoint) bool {
-		ep := value.endpoint
+	p.endpoints.Range(func(key uint32, value DiscoPeerEndpoint) bool {
+		ep := value.Endpoint()
 
 		if endpointSet.Contains(ep) {
 			return true
@@ -106,11 +151,11 @@ func (p *DiscoPeer) SetEndpoints(
 	})
 }
 
-func (p *DiscoPeer) Status() *DiscoPeerStatus {
+func (p *discoPeer) Status() DiscoPeerStatus {
 	return p.status
 }
 
-func (p *DiscoPeer) updateStatus() {
+func (p *discoPeer) updateStatus() {
 	minRTT := time.Duration(math.MaxInt64)
 	var minEndpoint netip.AddrPort
 	var minID uint32
@@ -126,13 +171,13 @@ func (p *DiscoPeer) updateStatus() {
 		}
 
 		minRTT = value.RTT
-		minEndpoint = dpe.endpoint
+		minEndpoint = dpe.Endpoint()
 		minID = key
 
 		return true
 	})
 
-	p.endpoints.Range(func(key uint32, value *DiscoPeerEndpoint) bool {
+	p.endpoints.Range(func(key uint32, value DiscoPeerEndpoint) bool {
 		if minRTT == math.MaxInt64 {
 			value.SetPriority(ticker.Primary)
 
@@ -156,11 +201,11 @@ func (p *DiscoPeer) updateStatus() {
 	p.status.setStatus(minEndpoint, minRTT)
 }
 
-func (p *DiscoPeer) enqueueReceivedPacket(pkt EncryptedDiscoPacket) {
+func (p *discoPeer) EnqueueReceivedPacket(pkt EncryptedDiscoPacket) {
 	p.recvChan <- pkt
 }
 
-func (p *DiscoPeer) handlePing(pkt DiscoPacket) {
+func (p *discoPeer) handlePing(pkt DiscoPacket) {
 	resp := DiscoPacket{
 		Header:            PongMessage,
 		SrcPublicDiscoKey: p.disco.publicKey,
@@ -192,7 +237,7 @@ func (p *DiscoPeer) handlePing(pkt DiscoPacket) {
 	ep.ReceivePing()
 }
 
-func (p *DiscoPeer) run() {
+func (p *discoPeer) run() {
 	for {
 		var pkt EncryptedDiscoPacket
 		select {
@@ -222,15 +267,31 @@ func (p *DiscoPeer) run() {
 			continue
 		}
 
-		ep.enqueueReceivedPacket(decrypted)
+		ep.EnqueueReceivedPacket(decrypted)
 	}
 }
 
-func (p *DiscoPeer) Close() error {
+func (p *discoPeer) closeAllEndpoints() {
+	p.endpoints.Range(func(key uint32, value DiscoPeerEndpoint) bool {
+		ep := value.Endpoint()
+
+		p.endpointToEndpointID.Delete(ep)
+		endpoint, ok := p.endpoints.LoadAndDelete(key)
+		if !ok {
+			return true
+		}
+		endpoint.Close()
+
+		return true
+	})
+}
+
+func (p *discoPeer) Close() error {
 	defer func() {
 		recover()
 	}()
 	close(p.closed)
+	p.closeAllEndpoints()
 	p.status.close()
 
 	p.disco.peers.Delete(p.srcPublicDiscoKey)
@@ -238,7 +299,7 @@ func (p *DiscoPeer) Close() error {
 	return nil
 }
 
-type DiscoPeerStatus struct {
+type discoPeerStatus struct {
 	cond *sync.Cond
 
 	closed         bool
@@ -251,11 +312,11 @@ type DiscoPeerStatusReadOnly struct {
 	ActiveRTT      time.Duration
 }
 
-func (s *DiscoPeerStatus) NotifyStatus(fn func(status DiscoPeerStatusReadOnly)) {
+func (s *discoPeerStatus) NotifyStatus(fn func(status DiscoPeerStatusReadOnly)) {
 	go s.notifyStatus(fn)
 }
 
-func (s *DiscoPeerStatus) notifyStatus(fn func(status DiscoPeerStatusReadOnly)) {
+func (s *discoPeerStatus) notifyStatus(fn func(status DiscoPeerStatusReadOnly)) {
 	s.cond.L.Lock()
 	prev := s.readonly()
 	s.cond.L.Unlock()
@@ -293,14 +354,14 @@ func (s *DiscoPeerStatus) notifyStatus(fn func(status DiscoPeerStatusReadOnly)) 
 	}
 }
 
-func (s *DiscoPeerStatus) Get() DiscoPeerStatusReadOnly {
+func (s *discoPeerStatus) Get() DiscoPeerStatusReadOnly {
 	s.cond.L.Lock()
 	defer s.cond.L.Unlock()
 
 	return s.readonly()
 }
 
-func (s *DiscoPeerStatus) setStatus(activeEndpoint netip.AddrPort, activeRTT time.Duration) {
+func (s *discoPeerStatus) setStatus(activeEndpoint netip.AddrPort, activeRTT time.Duration) {
 	s.cond.L.Lock()
 	defer s.cond.L.Unlock()
 
@@ -310,7 +371,7 @@ func (s *DiscoPeerStatus) setStatus(activeEndpoint netip.AddrPort, activeRTT tim
 	s.cond.Broadcast()
 }
 
-func (s *DiscoPeerStatus) close() {
+func (s *discoPeerStatus) close() {
 	s.cond.L.Lock()
 	defer s.cond.L.Unlock()
 
@@ -319,7 +380,7 @@ func (s *DiscoPeerStatus) close() {
 	s.cond.Broadcast()
 }
 
-func (s *DiscoPeerStatus) readonly() DiscoPeerStatusReadOnly {
+func (s *discoPeerStatus) readonly() DiscoPeerStatusReadOnly {
 	return DiscoPeerStatusReadOnly{
 		ActiveEndpoint: s.activeEndpoint,
 		ActiveRTT:      s.activeRTT,

@@ -7,40 +7,70 @@ import (
 
 	"github.com/miscord-dev/toxfu/disco/pktmgr"
 	"github.com/miscord-dev/toxfu/disco/ticker"
+	"github.com/miscord-dev/toxfu/pkg/wgkey"
 	"go.uber.org/zap"
 )
 
-type DiscoPeerEndpoint struct {
+type DiscoPeerEndpoint interface {
+	Endpoint() netip.AddrPort
+	Status() DiscoPeerEndpointStatus
+	SetPriority(priority ticker.Priority)
+	EnqueueReceivedPacket(pkt DiscoPacket)
+	ReceivePing()
+	Close() error
+}
+
+type Sender interface {
+	Send(pkt *EncryptedDiscoPacket)
+}
+
+type DiscoPeerEndpointStatus interface {
+	NotifyStatus(fn func(status DiscoPeerEndpointStatusReadOnly))
+}
+
+type discoPeerEndpoint struct {
 	recvChan      chan DiscoPacket
 	closed        chan struct{}
 	packetManager *pktmgr.Manager
 	ticker        ticker.Ticker
 
-	peer       *DiscoPeer
 	endpointID uint32
 	endpoint   netip.AddrPort
+	peerPubKey wgkey.DiscoPublicKey
+	sharedKey  wgkey.DiscoSharedKey
+	sender     Sender
 
 	packetID uint32
 
 	statusLock        sync.Mutex
 	priority          ticker.Priority
-	status            *DiscoPeerEndpointStatus
+	status            *discoPeerEndpointStatus
 	lastReinitialized time.Time
 
 	logger *zap.Logger
 }
 
-func newDiscoPeerEndpoint(ds *DiscoPeer, endpointID uint32, endpoint netip.AddrPort, logger *zap.Logger) *DiscoPeerEndpoint {
-	ep := &DiscoPeerEndpoint{
+var _ DiscoPeerEndpoint = &discoPeerEndpoint{}
+
+func newDiscoPeerEndpoint(
+	endpointID uint32,
+	endpoint netip.AddrPort,
+	peerPubKey wgkey.DiscoPublicKey,
+	sharedKey wgkey.DiscoSharedKey,
+	sender Sender,
+	logger *zap.Logger) DiscoPeerEndpoint {
+	ep := &discoPeerEndpoint{
 		recvChan:   make(chan DiscoPacket, 1),
 		closed:     make(chan struct{}),
 		ticker:     ticker.NewTicker(),
-		peer:       ds,
 		endpointID: endpointID,
 		endpoint:   endpoint,
+		peerPubKey: peerPubKey,
+		sharedKey:  sharedKey,
+		sender:     sender,
 		priority:   ticker.Primary,
 
-		status: &DiscoPeerEndpointStatus{
+		status: &discoPeerEndpointStatus{
 			cond: sync.NewCond(&sync.Mutex{}),
 		},
 
@@ -50,12 +80,12 @@ func newDiscoPeerEndpoint(ds *DiscoPeer, endpointID uint32, endpoint netip.AddrP
 		),
 	}
 	ep.packetManager = pktmgr.New(2*time.Second, ep.dropCallback)
-	ep.run()
+	go ep.run()
 
 	return ep
 }
 
-func (pe *DiscoPeerEndpoint) dropCallback() {
+func (pe *discoPeerEndpoint) dropCallback() {
 	pe.statusLock.Lock()
 	defer pe.statusLock.Unlock()
 
@@ -63,15 +93,15 @@ func (pe *DiscoPeerEndpoint) dropCallback() {
 	pe.status.setStatus(ticker.Connecting, 0)
 }
 
-func (pe *DiscoPeerEndpoint) sendDiscoPing() {
+func (pe *discoPeerEndpoint) sendDiscoPing() {
 	pkt := DiscoPacket{
 		Header:            PingMessage,
-		SrcPublicDiscoKey: pe.peer.disco.publicKey,
+		SrcPublicDiscoKey: pe.peerPubKey,
 		EndpointID:        pe.endpointID,
 		ID:                pe.packetID,
 
 		Endpoint:  pe.endpoint,
-		SharedKey: pe.peer.sharedKey,
+		SharedKey: pe.sharedKey,
 	}
 	pe.packetID++
 
@@ -81,11 +111,11 @@ func (pe *DiscoPeerEndpoint) sendDiscoPing() {
 		return
 	}
 
-	pe.peer.disco.sendChan <- encrypted
+	pe.sender.Send(encrypted)
 	pe.packetManager.AddPacket(pkt.ID)
 }
 
-func (pe *DiscoPeerEndpoint) handlePong(pkt DiscoPacket) {
+func (pe *discoPeerEndpoint) handlePong(pkt DiscoPacket) {
 	rtt, ok := pe.packetManager.RecvAck(pkt.ID)
 
 	if !ok {
@@ -99,48 +129,44 @@ func (pe *DiscoPeerEndpoint) handlePong(pkt DiscoPacket) {
 	pe.status.setStatus(ticker.Connected, rtt)
 }
 
-func (pe *DiscoPeerEndpoint) run() {
-	go func() {
-		for {
-			select {
-			case <-pe.ticker.C():
-				pe.sendDiscoPing()
-			case pkt := <-pe.recvChan:
-				switch pkt.Header {
-				case PingMessage:
-					// do nothing
-				case PongMessage:
-					pe.handlePong(pkt)
-				}
-			case <-pe.closed:
-				return
-			case <-pe.peer.closed:
-				pe.Close()
-				return
-			case <-pe.peer.disco.closed:
-				pe.Close()
-				return
+func (pe *discoPeerEndpoint) run() {
+	for {
+		select {
+		case <-pe.ticker.C():
+			pe.sendDiscoPing()
+		case pkt := <-pe.recvChan:
+			switch pkt.Header {
+			case PingMessage:
+				// do nothing
+			case PongMessage:
+				pe.handlePong(pkt)
 			}
+		case <-pe.closed:
+			return
 		}
-	}()
+	}
 }
 
-func (pe *DiscoPeerEndpoint) enqueueReceivedPacket(pkt DiscoPacket) {
+func (pe *discoPeerEndpoint) Endpoint() netip.AddrPort {
+	return pe.endpoint
+}
+
+func (pe *discoPeerEndpoint) EnqueueReceivedPacket(pkt DiscoPacket) {
 	pe.recvChan <- pkt
 }
 
-func (pe *DiscoPeerEndpoint) Close() error {
+func (pe *discoPeerEndpoint) Close() error {
 	close(pe.closed)
-	pe.Status().close()
+	pe.status.close()
 
 	return nil
 }
 
-func (pe *DiscoPeerEndpoint) Status() *DiscoPeerEndpointStatus {
+func (pe *discoPeerEndpoint) Status() DiscoPeerEndpointStatus {
 	return pe.status
 }
 
-func (pe *DiscoPeerEndpoint) SetPriority(priority ticker.Priority) {
+func (pe *discoPeerEndpoint) SetPriority(priority ticker.Priority) {
 	pe.statusLock.Lock()
 	defer pe.statusLock.Unlock()
 
@@ -151,7 +177,7 @@ func (pe *DiscoPeerEndpoint) SetPriority(priority ticker.Priority) {
 	pe.ticker.SetState(state, priority, false)
 }
 
-func (pe *DiscoPeerEndpoint) ReceivePing() {
+func (pe *discoPeerEndpoint) ReceivePing() {
 	if pe.status.Get().State != ticker.Connecting {
 		return
 	}
@@ -168,7 +194,7 @@ func (pe *DiscoPeerEndpoint) ReceivePing() {
 	pe.ticker.SetState(ticker.Connecting, pe.priority, true)
 }
 
-type DiscoPeerEndpointStatus struct {
+type discoPeerEndpointStatus struct {
 	cond *sync.Cond
 
 	closed bool
@@ -181,11 +207,11 @@ type DiscoPeerEndpointStatusReadOnly struct {
 	RTT   time.Duration
 }
 
-func (s *DiscoPeerEndpointStatus) NotifyStatus(fn func(status DiscoPeerEndpointStatusReadOnly)) {
+func (s *discoPeerEndpointStatus) NotifyStatus(fn func(status DiscoPeerEndpointStatusReadOnly)) {
 	go s.notifyStatus(fn)
 }
 
-func (s *DiscoPeerEndpointStatus) notifyStatus(fn func(status DiscoPeerEndpointStatusReadOnly)) {
+func (s *discoPeerEndpointStatus) notifyStatus(fn func(status DiscoPeerEndpointStatusReadOnly)) {
 	s.cond.L.Lock()
 	prev := s.readonly()
 	s.cond.L.Unlock()
@@ -224,14 +250,14 @@ func (s *DiscoPeerEndpointStatus) notifyStatus(fn func(status DiscoPeerEndpointS
 	}
 }
 
-func (s *DiscoPeerEndpointStatus) Get() DiscoPeerEndpointStatusReadOnly {
+func (s *discoPeerEndpointStatus) Get() DiscoPeerEndpointStatusReadOnly {
 	s.cond.L.Lock()
 	defer s.cond.L.Unlock()
 
 	return s.readonly()
 }
 
-func (s *DiscoPeerEndpointStatus) setStatus(state ticker.State, rtt time.Duration) {
+func (s *discoPeerEndpointStatus) setStatus(state ticker.State, rtt time.Duration) {
 	s.cond.L.Lock()
 	defer s.cond.L.Unlock()
 
@@ -241,7 +267,7 @@ func (s *DiscoPeerEndpointStatus) setStatus(state ticker.State, rtt time.Duratio
 	s.cond.Broadcast()
 }
 
-func (s *DiscoPeerEndpointStatus) close() {
+func (s *discoPeerEndpointStatus) close() {
 	s.cond.L.Lock()
 	defer s.cond.L.Unlock()
 
@@ -250,7 +276,7 @@ func (s *DiscoPeerEndpointStatus) close() {
 	s.cond.Broadcast()
 }
 
-func (s *DiscoPeerEndpointStatus) readonly() DiscoPeerEndpointStatusReadOnly {
+func (s *discoPeerEndpointStatus) readonly() DiscoPeerEndpointStatusReadOnly {
 	return DiscoPeerEndpointStatusReadOnly{
 		State: s.state,
 		RTT:   s.rtt,
