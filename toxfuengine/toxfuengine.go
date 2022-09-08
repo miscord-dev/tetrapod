@@ -25,7 +25,7 @@ type ToxfuEngine interface {
 
 type toxfuEngine struct {
 	wgEngine   wgengine.Engine
-	disco      *disco.Disco
+	disco      disco.Disco
 	hijackConn *hijack.Conn
 	collector  *endpoints.Collector
 

@@ -14,6 +14,8 @@ import (
 	"go.uber.org/zap"
 )
 
+//go:generate mockgen -source=$GOFILE -package=mock_$GOPACKAGE -destination=./mock/mock_$GOFILE
+
 type DiscoPeer interface {
 	EnqueueReceivedPacket(pkt EncryptedDiscoPacket)
 	SetEndpoints(endpoints []netip.AddrPort)
@@ -29,11 +31,12 @@ type DiscoPeerStatus interface {
 type discoPeer struct {
 	closed chan struct{}
 
-	disco    *Disco
 	recvChan chan EncryptedDiscoPacket
 
+	sender            Sender
 	srcPublicDiscoKey wgkey.DiscoPublicKey
 	sharedKey         wgkey.DiscoSharedKey
+	onClose           func()
 
 	endpointIDCounter    uint32
 	endpointToEndpointID syncmap.Map[netip.AddrPort, uint32]
@@ -45,13 +48,14 @@ type discoPeer struct {
 	logger *zap.Logger
 }
 
-func newDiscoPeer(d *Disco, pubKey wgkey.DiscoPublicKey, logger *zap.Logger) DiscoPeer {
+func NewDiscoPeer(d Sender, privateKey wgkey.DiscoPrivateKey, pubKey wgkey.DiscoPublicKey, onClose func(), logger *zap.Logger) DiscoPeer {
 	dp := &discoPeer{
 		closed:               make(chan struct{}),
-		disco:                d,
 		recvChan:             make(chan EncryptedDiscoPacket),
+		sender:               d,
 		srcPublicDiscoKey:    pubKey,
-		sharedKey:            d.privateKey.Shared(pubKey),
+		sharedKey:            privateKey.Shared(pubKey),
+		onClose:              onClose,
 		endpointToEndpointID: syncmap.Map[netip.AddrPort, uint32]{},
 		endpoints:            syncmap.Map[uint32, DiscoPeerEndpoint]{},
 		endpointStatusMap:    syncmap.Map[uint32, DiscoPeerEndpointStatusReadOnly]{},
@@ -67,18 +71,6 @@ func newDiscoPeer(d *Disco, pubKey wgkey.DiscoPublicKey, logger *zap.Logger) Dis
 	go dp.run()
 
 	return dp
-}
-
-func (p *discoPeer) Disco() *Disco {
-	return p.disco
-}
-
-func (p *discoPeer) SharedKey() wgkey.DiscoSharedKey {
-	return p.sharedKey
-}
-
-func (p *discoPeer) ClosedCh() <-chan struct{} {
-	return p.closed
 }
 
 func (p *discoPeer) SetEndpoints(
@@ -107,12 +99,12 @@ func (p *discoPeer) SetEndpoints(
 
 		renewID()
 
-		pe := newDiscoPeerEndpoint(
+		pe := NewDiscoPeerEndpoint(
 			endpointID,
 			ep,
 			p.srcPublicDiscoKey,
 			p.sharedKey,
-			p.disco,
+			p.sender,
 			p.logger,
 		)
 
@@ -208,7 +200,7 @@ func (p *discoPeer) EnqueueReceivedPacket(pkt EncryptedDiscoPacket) {
 func (p *discoPeer) handlePing(pkt DiscoPacket) {
 	resp := DiscoPacket{
 		Header:            PongMessage,
-		SrcPublicDiscoKey: p.disco.publicKey,
+		SrcPublicDiscoKey: p.srcPublicDiscoKey,
 		EndpointID:        pkt.EndpointID,
 		ID:                pkt.ID,
 
@@ -222,7 +214,7 @@ func (p *discoPeer) handlePing(pkt DiscoPacket) {
 		return
 	}
 
-	p.disco.sendChan <- encrypted
+	p.sender.Send(encrypted)
 
 	id, ok := p.endpointToEndpointID.Load(pkt.Endpoint)
 	if !ok {
@@ -242,8 +234,6 @@ func (p *discoPeer) run() {
 		var pkt EncryptedDiscoPacket
 		select {
 		case <-p.closed:
-			return
-		case <-p.disco.closed:
 			return
 		case pkt = <-p.recvChan:
 		}
@@ -294,7 +284,9 @@ func (p *discoPeer) Close() error {
 	p.closeAllEndpoints()
 	p.status.close()
 
-	p.disco.peers.Delete(p.srcPublicDiscoKey)
+	if p.onClose != nil {
+		p.onClose()
+	}
 
 	return nil
 }

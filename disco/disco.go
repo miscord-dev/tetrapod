@@ -12,7 +12,18 @@ import (
 	"go.uber.org/zap"
 )
 
-type Disco struct {
+//go:generate mockgen -source=$GOFILE -package=mock_$GOPACKAGE -destination=./mock/mock_$GOFILE
+
+type Disco interface {
+	AddPeer(pubKey wgkey.DiscoPublicKey) DiscoPeer
+	SetPeers(peers map[wgkey.DiscoPublicKey][]netip.AddrPort)
+	GetAllStatuses() (res map[wgkey.DiscoPublicKey]DiscoPeerStatusReadOnly)
+	Send(pkt *EncryptedDiscoPacket)
+	SetStatusCallback(fn func(pubKey wgkey.DiscoPublicKey, status DiscoPeerStatusReadOnly))
+	Close() error
+}
+
+type disco struct {
 	privateKey wgkey.DiscoPrivateKey
 	publicKey  wgkey.DiscoPublicKey
 
@@ -26,7 +37,14 @@ type Disco struct {
 	logger *zap.Logger
 }
 
-func New(privateKey wgkey.DiscoPrivateKey, port int, logger *zap.Logger) (*Disco, error) {
+type Sender interface {
+	Send(pkt *EncryptedDiscoPacket)
+}
+
+var _ Disco = &disco{}
+var _ Sender = &disco{}
+
+func New(privateKey wgkey.DiscoPrivateKey, port int, logger *zap.Logger) (Disco, error) {
 	conn, err := net.ListenUDP("udp", &net.UDPAddr{
 		Port: port,
 	})
@@ -38,8 +56,8 @@ func New(privateKey wgkey.DiscoPrivateKey, port int, logger *zap.Logger) (*Disco
 	return NewFromPacketConn(privateKey, types.PacketConnFrom(conn), logger), nil
 }
 
-func NewFromPacketConn(privateKey wgkey.DiscoPrivateKey, packetConn types.PacketConn, logger *zap.Logger) *Disco {
-	d := &Disco{
+func NewFromPacketConn(privateKey wgkey.DiscoPrivateKey, packetConn types.PacketConn, logger *zap.Logger) Disco {
+	d := &disco{
 		privateKey: privateKey,
 		publicKey:  privateKey.Public(),
 		closed:     make(chan struct{}),
@@ -55,7 +73,7 @@ func NewFromPacketConn(privateKey wgkey.DiscoPrivateKey, packetConn types.Packet
 	return d
 }
 
-func (d *Disco) runSender() {
+func (d *disco) runSender() {
 	for pkt := range d.sendChan {
 		b, ok := pkt.Marshal()
 
@@ -71,7 +89,7 @@ func (d *Disco) runSender() {
 	}
 }
 
-func (d *Disco) runReceiver() {
+func (d *disco) runReceiver() {
 	buf := make([]byte, 2048)
 
 	for {
@@ -114,27 +132,44 @@ func (d *Disco) runReceiver() {
 	}
 }
 
-func (d *Disco) AddPeer(pubKey wgkey.DiscoPublicKey) DiscoPeer {
+func (d *disco) AddPeer(pubKey wgkey.DiscoPublicKey) DiscoPeer {
 	if peer, ok := d.peers.Load(pubKey); ok {
 		return peer
 	}
 
-	peer := newDiscoPeer(d, pubKey, d.logger)
+	temporal := true
+	peer := NewDiscoPeer(d, d.privateKey, pubKey, func() {
+		if temporal {
+			return
+		}
+
+		d.peers.Delete(pubKey)
+	}, d.logger)
 
 	actual, loaded := d.peers.LoadOrStore(pubKey, peer)
 
 	if loaded {
 		peer.Close()
 	} else {
+		temporal = false
+
 		peer.Status().NotifyStatus(func(status DiscoPeerStatusReadOnly) {
 			d.statusCallback(pubKey, status)
 		})
+
+		select {
+		case <-d.closed:
+			peer.Close()
+
+			return nil
+		default:
+		}
 	}
 
 	return actual
 }
 
-func (d *Disco) SetPeers(peers map[wgkey.DiscoPublicKey][]netip.AddrPort) {
+func (d *disco) SetPeers(peers map[wgkey.DiscoPublicKey][]netip.AddrPort) {
 	for k, v := range peers {
 		peer := d.AddPeer(k)
 
@@ -152,7 +187,7 @@ func (d *Disco) SetPeers(peers map[wgkey.DiscoPublicKey][]netip.AddrPort) {
 	})
 }
 
-func (d *Disco) GetAllStatuses() (res map[wgkey.DiscoPublicKey]DiscoPeerStatusReadOnly) {
+func (d *disco) GetAllStatuses() (res map[wgkey.DiscoPublicKey]DiscoPeerStatusReadOnly) {
 	res = make(map[wgkey.DiscoPublicKey]DiscoPeerStatusReadOnly)
 	d.peers.Range(func(key wgkey.DiscoPublicKey, value DiscoPeer) bool {
 		res[key] = value.Status().Get()
@@ -163,17 +198,27 @@ func (d *Disco) GetAllStatuses() (res map[wgkey.DiscoPublicKey]DiscoPeerStatusRe
 	return res
 }
 
-func (d *Disco) Send(pkt *EncryptedDiscoPacket) {
+func (d *disco) Send(pkt *EncryptedDiscoPacket) {
 	d.sendChan <- pkt
 }
 
-func (d *Disco) Close() error {
+func (d *disco) SetStatusCallback(fn func(pubKey wgkey.DiscoPublicKey, status DiscoPeerStatusReadOnly)) {
+	d.statusCallback = fn
+}
+
+func (d *disco) closeAllPeers() {
+	d.peers.Range(func(key wgkey.DiscoPublicKey, value DiscoPeer) bool {
+		d.peers.Delete(key)
+		value.Close()
+
+		return true
+	})
+}
+
+func (d *disco) Close() error {
 	close(d.closed)
+	d.closeAllPeers()
 	d.conn.Close()
 
 	return nil
-}
-
-func (d *Disco) SetStatusCallback(fn func(pubKey wgkey.DiscoPublicKey, status DiscoPeerStatusReadOnly)) {
-	d.statusCallback = fn
 }

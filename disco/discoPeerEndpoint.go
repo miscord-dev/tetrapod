@@ -11,6 +11,8 @@ import (
 	"go.uber.org/zap"
 )
 
+//go:generate mockgen -source=$GOFILE -package=mock_$GOPACKAGE -destination=./mock/mock_$GOFILE
+
 type DiscoPeerEndpoint interface {
 	Endpoint() netip.AddrPort
 	Status() DiscoPeerEndpointStatus
@@ -18,10 +20,6 @@ type DiscoPeerEndpoint interface {
 	EnqueueReceivedPacket(pkt DiscoPacket)
 	ReceivePing()
 	Close() error
-}
-
-type Sender interface {
-	Send(pkt *EncryptedDiscoPacket)
 }
 
 type DiscoPeerEndpointStatus interface {
@@ -52,13 +50,14 @@ type discoPeerEndpoint struct {
 
 var _ DiscoPeerEndpoint = &discoPeerEndpoint{}
 
-func newDiscoPeerEndpoint(
+func NewDiscoPeerEndpoint(
 	endpointID uint32,
 	endpoint netip.AddrPort,
 	peerPubKey wgkey.DiscoPublicKey,
 	sharedKey wgkey.DiscoSharedKey,
 	sender Sender,
-	logger *zap.Logger) DiscoPeerEndpoint {
+	logger *zap.Logger,
+) DiscoPeerEndpoint {
 	ep := &discoPeerEndpoint{
 		recvChan:   make(chan DiscoPacket, 1),
 		closed:     make(chan struct{}),
