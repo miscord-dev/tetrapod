@@ -19,3 +19,7 @@ all: toxfu toxfusaba
 deploy: toxfu toxfuarm toxfusaba
 	rsync -avh ./bin/toxfuarm ubuntu@192.168.1.22:/tmp/
 	rsync -avh ./bin/toxfu ubuntu@10.28.100.113:/tmp/
+
+arena:
+	go build ./cmd/toxfutest/
+	rsync -avh ./toxfutest ubuntu@160.248.79.94:/home/ubuntu/

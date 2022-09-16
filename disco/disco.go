@@ -24,8 +24,10 @@ type Disco interface {
 }
 
 type disco struct {
-	privateKey wgkey.DiscoPrivateKey
-	publicKey  wgkey.DiscoPublicKey
+	privateKey  wgkey.DiscoPrivateKey
+	publicKey   wgkey.DiscoPublicKey
+	newPeer     NewDiscoPeerFunc
+	newEndpoint NewDiscoPeerEndpointFunc
 
 	closed   chan struct{}
 	sendChan chan *EncryptedDiscoPacket
@@ -44,7 +46,7 @@ type Sender interface {
 var _ Disco = &disco{}
 var _ Sender = &disco{}
 
-func New(privateKey wgkey.DiscoPrivateKey, port int, logger *zap.Logger) (Disco, error) {
+func NewListen(privateKey wgkey.DiscoPrivateKey, port int, logger *zap.Logger) (Disco, error) {
 	conn, err := net.ListenUDP("udp", &net.UDPAddr{
 		Port: port,
 	})
@@ -56,15 +58,31 @@ func New(privateKey wgkey.DiscoPrivateKey, port int, logger *zap.Logger) (Disco,
 	return NewFromPacketConn(privateKey, types.PacketConnFrom(conn), logger), nil
 }
 
-func NewFromPacketConn(privateKey wgkey.DiscoPrivateKey, packetConn types.PacketConn, logger *zap.Logger) Disco {
+func NewFromPacketConn(
+	privateKey wgkey.DiscoPrivateKey,
+	packetConn types.PacketConn,
+	logger *zap.Logger,
+) Disco {
+	return New(privateKey, packetConn, logger, NewDiscoPeer, NewDiscoPeerEndpoint)
+}
+
+func New(
+	privateKey wgkey.DiscoPrivateKey,
+	packetConn types.PacketConn,
+	logger *zap.Logger,
+	newPeer NewDiscoPeerFunc,
+	newEndpoint NewDiscoPeerEndpointFunc,
+) Disco {
 	d := &disco{
-		privateKey: privateKey,
-		publicKey:  privateKey.Public(),
-		closed:     make(chan struct{}),
-		sendChan:   make(chan *EncryptedDiscoPacket),
-		conn:       packetConn,
-		peers:      syncmap.Map[wgkey.DiscoPublicKey, DiscoPeer]{},
-		logger:     logger.With(zap.String("service", "disco")),
+		privateKey:  privateKey,
+		publicKey:   privateKey.Public(),
+		newPeer:     newPeer,
+		newEndpoint: newEndpoint,
+		closed:      make(chan struct{}),
+		sendChan:    make(chan *EncryptedDiscoPacket),
+		conn:        packetConn,
+		peers:       syncmap.Map[wgkey.DiscoPublicKey, DiscoPeer]{},
+		logger:      logger.With(zap.String("service", "disco")),
 	}
 
 	go d.runSender()
@@ -138,13 +156,15 @@ func (d *disco) AddPeer(pubKey wgkey.DiscoPublicKey) DiscoPeer {
 	}
 
 	temporal := true
-	peer := NewDiscoPeer(d, d.privateKey, pubKey, func() {
+	onClose := func() {
 		if temporal {
 			return
 		}
 
 		d.peers.Delete(pubKey)
-	}, d.logger)
+	}
+
+	peer := NewDiscoPeer(d, d.privateKey, pubKey, onClose, d.logger, d.newEndpoint)
 
 	actual, loaded := d.peers.LoadOrStore(pubKey, peer)
 

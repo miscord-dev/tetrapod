@@ -33,10 +33,12 @@ type discoPeer struct {
 
 	recvChan chan EncryptedDiscoPacket
 
-	sender            Sender
-	srcPublicDiscoKey wgkey.DiscoPublicKey
-	sharedKey         wgkey.DiscoSharedKey
-	onClose           func()
+	sender              Sender
+	peerPublicDiscoKey  wgkey.DiscoPublicKey
+	localPublicDiscoKey wgkey.DiscoPublicKey
+	sharedKey           wgkey.DiscoSharedKey
+	onClose             func()
+	newEndpoint         NewDiscoPeerEndpointFunc
 
 	endpointIDCounter    uint32
 	endpointToEndpointID syncmap.Map[netip.AddrPort, uint32]
@@ -48,12 +50,31 @@ type discoPeer struct {
 	logger *zap.Logger
 }
 
-func NewDiscoPeer(d Sender, privateKey wgkey.DiscoPrivateKey, pubKey wgkey.DiscoPublicKey, onClose func(), logger *zap.Logger) DiscoPeer {
+type NewDiscoPeerFunc func(
+	d Sender,
+	privateKey wgkey.DiscoPrivateKey,
+	pubKey wgkey.DiscoPublicKey,
+	onClose func(),
+	logger *zap.Logger,
+	newEndpoint NewDiscoPeerEndpointFunc,
+) DiscoPeer
+
+var _ NewDiscoPeerFunc = NewDiscoPeer
+
+func NewDiscoPeer(
+	d Sender,
+	privateKey wgkey.DiscoPrivateKey,
+	pubKey wgkey.DiscoPublicKey,
+	onClose func(),
+	logger *zap.Logger,
+	newEndpoint NewDiscoPeerEndpointFunc,
+) DiscoPeer {
 	dp := &discoPeer{
 		closed:               make(chan struct{}),
 		recvChan:             make(chan EncryptedDiscoPacket),
 		sender:               d,
-		srcPublicDiscoKey:    pubKey,
+		peerPublicDiscoKey:   pubKey,
+		localPublicDiscoKey:  privateKey.Public(),
 		sharedKey:            privateKey.Shared(pubKey),
 		onClose:              onClose,
 		endpointToEndpointID: syncmap.Map[netip.AddrPort, uint32]{},
@@ -99,10 +120,10 @@ func (p *discoPeer) SetEndpoints(
 
 		renewID()
 
-		pe := NewDiscoPeerEndpoint(
+		pe := p.newEndpoint(
 			endpointID,
 			ep,
-			p.srcPublicDiscoKey,
+			p.localPublicDiscoKey,
 			p.sharedKey,
 			p.sender,
 			p.logger,
@@ -200,7 +221,7 @@ func (p *discoPeer) EnqueueReceivedPacket(pkt EncryptedDiscoPacket) {
 func (p *discoPeer) handlePing(pkt DiscoPacket) {
 	resp := DiscoPacket{
 		Header:            PongMessage,
-		SrcPublicDiscoKey: p.srcPublicDiscoKey,
+		SrcPublicDiscoKey: p.peerPublicDiscoKey,
 		EndpointID:        pkt.EndpointID,
 		ID:                pkt.ID,
 

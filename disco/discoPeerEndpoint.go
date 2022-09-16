@@ -32,11 +32,11 @@ type discoPeerEndpoint struct {
 	packetManager *pktmgr.Manager
 	ticker        ticker.Ticker
 
-	endpointID uint32
-	endpoint   netip.AddrPort
-	peerPubKey wgkey.DiscoPublicKey
-	sharedKey  wgkey.DiscoSharedKey
-	sender     Sender
+	endpointID  uint32
+	endpoint    netip.AddrPort
+	localPubKey wgkey.DiscoPublicKey
+	sharedKey   wgkey.DiscoSharedKey
+	sender      Sender
 
 	packetID uint32
 
@@ -50,24 +50,33 @@ type discoPeerEndpoint struct {
 
 var _ DiscoPeerEndpoint = &discoPeerEndpoint{}
 
-func NewDiscoPeerEndpoint(
+type NewDiscoPeerEndpointFunc func(
 	endpointID uint32,
 	endpoint netip.AddrPort,
 	peerPubKey wgkey.DiscoPublicKey,
 	sharedKey wgkey.DiscoSharedKey,
 	sender Sender,
 	logger *zap.Logger,
+) DiscoPeerEndpoint
+
+func NewDiscoPeerEndpoint(
+	endpointID uint32,
+	endpoint netip.AddrPort,
+	localPubKey wgkey.DiscoPublicKey,
+	sharedKey wgkey.DiscoSharedKey,
+	sender Sender,
+	logger *zap.Logger,
 ) DiscoPeerEndpoint {
 	ep := &discoPeerEndpoint{
-		recvChan:   make(chan DiscoPacket, 1),
-		closed:     make(chan struct{}),
-		ticker:     ticker.NewTicker(),
-		endpointID: endpointID,
-		endpoint:   endpoint,
-		peerPubKey: peerPubKey,
-		sharedKey:  sharedKey,
-		sender:     sender,
-		priority:   ticker.Primary,
+		recvChan:    make(chan DiscoPacket, 1),
+		closed:      make(chan struct{}),
+		ticker:      ticker.NewTicker(),
+		endpointID:  endpointID,
+		endpoint:    endpoint,
+		localPubKey: localPubKey,
+		sharedKey:   sharedKey,
+		sender:      sender,
+		priority:    ticker.Primary,
 
 		status: &discoPeerEndpointStatus{
 			cond: sync.NewCond(&sync.Mutex{}),
@@ -95,7 +104,7 @@ func (pe *discoPeerEndpoint) dropCallback() {
 func (pe *discoPeerEndpoint) sendDiscoPing() {
 	pkt := DiscoPacket{
 		Header:            PingMessage,
-		SrcPublicDiscoKey: pe.peerPubKey,
+		SrcPublicDiscoKey: pe.localPubKey,
 		EndpointID:        pe.endpointID,
 		ID:                pe.packetID,
 

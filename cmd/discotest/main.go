@@ -39,7 +39,7 @@ func main() {
 
 	logger, _ := zap.NewProduction()
 
-	d, err := disco.New(privKey, port, logger)
+	d, err := disco.NewListen(privKey, port, logger)
 
 	if err != nil {
 		panic(err)
