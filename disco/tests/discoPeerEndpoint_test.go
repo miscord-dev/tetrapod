@@ -3,6 +3,7 @@ package discotests
 import (
 	"net/netip"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -12,8 +13,6 @@ import (
 	"github.com/miscord-dev/toxfu/disco/ticker"
 	"github.com/miscord-dev/toxfu/pkg/testutil"
 	"github.com/miscord-dev/toxfu/pkg/wgkey"
-	"go.uber.org/atomic"
-	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 )
 
@@ -29,170 +28,145 @@ func newDiscoPrivKey(t *testing.T) wgkey.DiscoPrivateKey {
 	return privKey
 }
 
-type dpe struct {
-	dpe          disco.DiscoPeerEndpoint
-	endpoint     netip.AddrPort
-	localPrivKey wgkey.DiscoPrivateKey
-	localPubKey  wgkey.DiscoPublicKey
-	sharedKey    wgkey.DiscoSharedKey
-	sender       disco.Sender
-	logger       *zap.Logger
+type statusGetter func() (ticker.State, time.Duration)
 
-	pipe chan disco.DiscoPacket
+func initDiscoPeerEndpoint(t *testing.T, filter func(*disco.DiscoPacket) bool) statusGetter {
+	t.Helper()
 
-	statusLock sync.Mutex
-	status     ticker.State
-	rtt        time.Duration
-
-	filter atomic.Pointer[func() bool]
-}
-
-func newDPE(
-	localPrivKey, peerPrivKey wgkey.DiscoPrivateKey,
-	endpoint netip.AddrPort,
-	sender disco.Sender,
-	logger *zap.Logger,
-) *dpe {
-	localPubKey := localPrivKey.Public()
-	sharedKey := localPrivKey.Shared(peerPrivKey.Public())
-
-	return &dpe{
-		endpoint:     endpoint,
-		localPrivKey: localPrivKey,
-		localPubKey:  localPubKey,
-		sharedKey:    sharedKey,
-		sender:       sender,
-		logger:       logger,
-		pipe:         make(chan disco.DiscoPacket, 1),
-	}
-}
-
-func (d *dpe) start() {
-	d.dpe = disco.NewDiscoPeerEndpoint(1, d.endpoint, d.localPubKey, d.sharedKey, d.sender, d.logger)
-
-	d.dpe.Status().NotifyStatus(func(status disco.DiscoPeerEndpointStatusReadOnly) {
-		d.statusLock.Lock()
-		defer d.statusLock.Unlock()
-		d.status = status.State
-		d.rtt = status.RTT
-	})
-
-	go func() {
-		for p := range d.pipe {
-			d.dpe.EnqueueReceivedPacket(p)
-		}
-	}()
-}
-
-func (d *dpe) send(pkt disco.DiscoPacket) {
-	go func() {
-		filter := d.filter.Load()
-
-		if filter != nil && *filter != nil {
-			if !(*filter)() {
-				return
-			}
-		}
-
-		d.pipe <- pkt
-	}()
-}
-
-func (d *dpe) getStatus() (ticker.State, time.Duration) {
-	d.statusLock.Lock()
-	defer d.statusLock.Unlock()
-
-	return d.status, d.rtt
-}
-
-func TestDiscoPeerEndpoint(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	logger := zaptest.NewLogger(t)
 
-	privKeyA := newDiscoPrivKey(t)
-	privKeyB := newDiscoPrivKey(t)
+	localPrivKey := newDiscoPrivKey(t)
+	peerPrivKey := newDiscoPrivKey(t)
+	sharedKey := localPrivKey.Shared(peerPrivKey.Public())
 
-	senderA := mock_disco.NewMockSender(ctrl)
+	endpoint := netip.MustParseAddrPort("192.168.1.2:65432")
+	sender := mock_disco.NewMockSender(ctrl)
 
-	a := newDPE(privKeyA, privKeyB,
-		netip.MustParseAddrPort("192.168.1.2:65432"), senderA, logger.With(zap.String("target", "a")))
+	var dpe disco.DiscoPeerEndpoint
 
-	initSender := func(senderDPE, recverDPE *dpe, sender *mock_disco.MockSender) {
-		sharedKey := senderDPE.sharedKey
-
-		sender.EXPECT().Send(&testutil.Matcher[*disco.EncryptedDiscoPacket]{
-			MatchesFunc: func(x *disco.EncryptedDiscoPacket) bool {
-				var dec disco.DiscoPacket
-				dec.SharedKey = sharedKey
-
-				if !dec.Decrypt(x) {
-					t.Fatal("failed to decrypt packet")
-				}
-				if dec.Endpoint != senderDPE.endpoint {
-					t.Fatalf("endpoint mismatch(expected: %v, got: %v)", senderDPE.endpoint, dec.Endpoint)
-				}
-				if dec.Header != disco.PingMessage {
-					t.Fatalf("header mismatch: %x", dec.Header)
-				}
-				if wgkey.DiscoPublicKey(dec.SrcPublicDiscoKey) != senderDPE.localPrivKey.Public() {
-					t.Fatalf("SrcPublicDiscoKey mismatch(expected: %v, actual: %v)", senderDPE.localPrivKey.Public(), wgkey.DiscoPublicKey(dec.SrcPublicDiscoKey))
-				}
-				if dec.EndpointID != 1 {
-					t.Fatalf("unexpected endpoint id: %v", dec.EndpointID)
-				}
-
-				return true
-			},
-			StringFunc: func() string {
-				return "is a valid EncryptedDiscoPacket"
-			},
-		}).Do(func(x *disco.EncryptedDiscoPacket) {
+	sender.EXPECT().Send(&testutil.Matcher[*disco.EncryptedDiscoPacket]{
+		MatchesFunc: func(x *disco.EncryptedDiscoPacket) bool {
 			var dec disco.DiscoPacket
 			dec.SharedKey = sharedKey
 
 			if !dec.Decrypt(x) {
 				t.Fatal("failed to decrypt packet")
 			}
-
-			if dec.Header == disco.PongMessage {
-				recverDPE.send(dec)
-
-				return
+			if dec.Endpoint != endpoint {
+				t.Fatalf("endpoint mismatch(expected: %v, got: %v)", endpoint, dec.Endpoint)
+			}
+			if dec.Header != disco.PingMessage {
+				t.Fatalf("header mismatch: %x", dec.Header)
+			}
+			if wgkey.DiscoPublicKey(dec.SrcPublicDiscoKey) != localPrivKey.Public() {
+				t.Fatalf("SrcPublicDiscoKey mismatch(expected: %v, actual: %v)", localPrivKey.Public(), wgkey.DiscoPublicKey(dec.SrcPublicDiscoKey))
+			}
+			if dec.EndpointID != 1 {
+				t.Fatalf("unexpected endpoint id: %v", dec.EndpointID)
 			}
 
-			filter := senderDPE.filter.Load()
+			return true
+		},
+		StringFunc: func() string {
+			return "is a valid EncryptedDiscoPacket"
+		},
+	}).Do(func(x *disco.EncryptedDiscoPacket) {
+		var dec disco.DiscoPacket
+		dec.SharedKey = sharedKey
 
-			if filter != nil && *filter != nil {
-				if !(*filter)() {
-					return
-				}
-			}
+		if !dec.Decrypt(x) {
+			t.Fatal("failed to decrypt packet")
+		}
 
-			senderDPE.dpe.EnqueueReceivedPacket(dec)
-		}).AnyTimes()
+		if !filter(&dec) {
+			return
+		}
+
+		dpe.EnqueueReceivedPacket(dec)
+	}).AnyTimes()
+
+	dpe = disco.NewDiscoPeerEndpoint(1, netip.MustParseAddrPort("192.168.1.2:65432"),
+		localPrivKey.Public(), sharedKey, sender, logger)
+
+	var status struct {
+		lock   sync.Mutex
+		status ticker.State
+		rtt    time.Duration
 	}
+	getStatus := func() (ticker.State, time.Duration) {
+		status.lock.Lock()
+		defer status.lock.Unlock()
 
-	filter := func() bool {
+		return status.status, status.rtt
+	}
+	dpe.Status().NotifyStatus(func(s disco.DiscoPeerEndpointStatusReadOnly) {
+		status.lock.Lock()
+		defer status.lock.Unlock()
+		status.status = s.State
+		status.rtt = s.RTT
+	})
+
+	t.Log("a pub key", localPrivKey.Public())
+	t.Log("b pub key", localPrivKey.Public())
+
+	return getStatus
+}
+
+func TestDiscoPeerEndpointSimple(t *testing.T) {
+	filter := func(dec *disco.DiscoPacket) bool {
+		dec.Header = disco.PongMessage
+
 		return true
 	}
 
-	a.filter.Store(&filter)
-
-	initSender(a, b, senderA)
-	initSender(b, a, senderB)
-
-	a.start()
-	b.start()
-
-	t.Log("a pub key", a.localPubKey)
-	t.Log("b pub key", b.localPubKey)
+	getStatus := initDiscoPeerEndpoint(t, filter)
 
 	time.Sleep(1 * time.Second)
 
-	if status, rtt := a.getStatus(); status != ticker.Connected {
+	if status, rtt := getStatus(); status != ticker.Connected {
 		t.Error("not connected", status)
 	} else if rtt == 0 || rtt >= 1*time.Second {
 		t.Error("invalid duration", rtt)
 	}
+}
 
+func TestDiscoPeerEndpointDisconnectAfterConnected(t *testing.T) {
+	var connected atomic.Bool
+	connected.Store(true)
+
+	filter := func(dec *disco.DiscoPacket) bool {
+		dec.Header = disco.PongMessage
+
+		return connected.Load()
+	}
+
+	getStatus := initDiscoPeerEndpoint(t, filter)
+
+	time.Sleep(1 * time.Second)
+
+	if status, rtt := getStatus(); status != ticker.Connected {
+		t.Error("not connected", status)
+	} else if rtt == 0 || rtt >= 1*time.Second {
+		t.Error("invalid duration", rtt)
+	}
+	connected.Store(false)
+
+	time.Sleep(4 * time.Second)
+
+	if status, rtt := getStatus(); status != ticker.Connecting {
+		t.Error("connected", status)
+	} else if rtt != 0 {
+		t.Error("invalid duration", rtt)
+	}
+
+	connected.Store(true)
+
+	time.Sleep(1 * time.Second)
+
+	if status, rtt := getStatus(); status != ticker.Connected {
+		t.Error("not connected", status)
+	} else if rtt == 0 || rtt >= 1*time.Second {
+		t.Error("invalid duration", rtt)
+	}
 }
