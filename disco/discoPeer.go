@@ -342,7 +342,7 @@ func (s *discoPeerStatus) notifyStatus(fn func(status DiscoPeerStatusReadOnly)) 
 		}
 
 		curr := s.readonly()
-		if !curr.equalsTo(prev) {
+		if !curr.equalTo(prev) {
 			s.cond.L.Unlock()
 			fn(curr)
 			prev = curr
@@ -360,7 +360,7 @@ func (s *discoPeerStatus) notifyStatus(fn func(status DiscoPeerStatusReadOnly)) 
 
 		s.cond.L.Unlock()
 
-		if !curr.equalsTo(prev) {
+		if !curr.equalTo(prev) {
 			fn(curr)
 			prev = curr
 		}
@@ -400,6 +400,6 @@ func (s *discoPeerStatus) readonly() DiscoPeerStatusReadOnly {
 	}
 }
 
-func (s *DiscoPeerStatusReadOnly) equalsTo(target DiscoPeerStatusReadOnly) bool {
+func (s *DiscoPeerStatusReadOnly) equalTo(target DiscoPeerStatusReadOnly) bool {
 	return s.ActiveEndpoint == target.ActiveEndpoint && s.ActiveRTT == target.ActiveRTT
 }

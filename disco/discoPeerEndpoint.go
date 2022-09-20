@@ -23,6 +23,7 @@ type DiscoPeerEndpoint interface {
 }
 
 type DiscoPeerEndpointStatus interface {
+	Get() DiscoPeerEndpointStatusReadOnly
 	NotifyStatus(fn func(status DiscoPeerEndpointStatusReadOnly))
 }
 
@@ -87,7 +88,7 @@ func NewDiscoPeerEndpoint(
 			zap.String("endpoint", endpoint.String()),
 		),
 	}
-	ep.packetManager = pktmgr.New(2*time.Second, ep.dropCallback)
+	ep.packetManager = pktmgr.New(400*time.Millisecond, ep.dropCallback)
 	go ep.run()
 
 	return ep
@@ -119,8 +120,8 @@ func (pe *discoPeerEndpoint) sendDiscoPing() {
 		return
 	}
 
-	pe.sender.Send(encrypted)
 	pe.packetManager.AddPacket(pkt.ID)
+	pe.sender.Send(encrypted)
 }
 
 func (pe *discoPeerEndpoint) handlePong(pkt DiscoPacket) {
@@ -233,7 +234,7 @@ func (s *discoPeerEndpointStatus) notifyStatus(fn func(status DiscoPeerEndpointS
 			s.cond.L.Unlock()
 			return
 		}
-		if !curr.equalsTo(prev) {
+		if !curr.equalTo(prev) {
 			s.cond.L.Unlock()
 			fn(curr)
 			prev = curr
@@ -251,7 +252,7 @@ func (s *discoPeerEndpointStatus) notifyStatus(fn func(status DiscoPeerEndpointS
 
 		s.cond.L.Unlock()
 
-		if !curr.equalsTo(prev) {
+		if !curr.equalTo(prev) {
 			fn(curr)
 			prev = curr
 		}
@@ -291,6 +292,6 @@ func (s *discoPeerEndpointStatus) readonly() DiscoPeerEndpointStatusReadOnly {
 	}
 }
 
-func (s *DiscoPeerEndpointStatusReadOnly) equalsTo(target DiscoPeerEndpointStatusReadOnly) bool {
+func (s *DiscoPeerEndpointStatusReadOnly) equalTo(target DiscoPeerEndpointStatusReadOnly) bool {
 	return s.State == target.State && s.RTT == target.RTT
 }

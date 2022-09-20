@@ -1,9 +1,9 @@
 package discotests
 
 import (
+	"io"
 	"net/netip"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -13,10 +13,14 @@ import (
 	"github.com/miscord-dev/toxfu/disco/ticker"
 	"github.com/miscord-dev/toxfu/pkg/testutil"
 	"github.com/miscord-dev/toxfu/pkg/wgkey"
+	"go.uber.org/atomic"
 	"go.uber.org/zap/zaptest"
+
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
-func newDiscoPrivKey(t *testing.T) wgkey.DiscoPrivateKey {
+func newDiscoPrivKey(t GinkgoTInterface) wgkey.DiscoPrivateKey {
 	t.Helper()
 
 	privKey, err := wgkey.New()
@@ -28,9 +32,9 @@ func newDiscoPrivKey(t *testing.T) wgkey.DiscoPrivateKey {
 	return privKey
 }
 
-type statusGetter func() (ticker.State, time.Duration)
+type statusGetter func() disco.DiscoPeerEndpointStatusReadOnly
 
-func initDiscoPeerEndpoint(t *testing.T, filter func(*disco.DiscoPacket) bool) statusGetter {
+func initDiscoPeerEndpoint(t GinkgoTInterface, filter func(*disco.DiscoPacket) bool) (statusGetter, io.Closer) {
 	t.Helper()
 
 	ctrl := gomock.NewController(t)
@@ -83,90 +87,84 @@ func initDiscoPeerEndpoint(t *testing.T, filter func(*disco.DiscoPacket) bool) s
 			return
 		}
 
-		dpe.EnqueueReceivedPacket(dec)
+		go dpe.EnqueueReceivedPacket(dec)
 	}).AnyTimes()
 
 	dpe = disco.NewDiscoPeerEndpoint(1, netip.MustParseAddrPort("192.168.1.2:65432"),
 		localPrivKey.Public(), sharedKey, sender, logger)
 
-	var status struct {
-		lock   sync.Mutex
-		status ticker.State
-		rtt    time.Duration
-	}
-	getStatus := func() (ticker.State, time.Duration) {
-		status.lock.Lock()
-		defer status.lock.Unlock()
+	var lock sync.Mutex
+	var status disco.DiscoPeerEndpointStatusReadOnly
+	getStatus := func() disco.DiscoPeerEndpointStatusReadOnly {
+		lock.Lock()
+		defer lock.Unlock()
 
-		return status.status, status.rtt
+		return status
 	}
 	dpe.Status().NotifyStatus(func(s disco.DiscoPeerEndpointStatusReadOnly) {
-		status.lock.Lock()
-		defer status.lock.Unlock()
-		status.status = s.State
-		status.rtt = s.RTT
+		lock.Lock()
+		defer lock.Unlock()
+
+		status = s
 	})
 
-	t.Log("a pub key", localPrivKey.Public())
-	t.Log("b pub key", localPrivKey.Public())
-
-	return getStatus
+	return getStatus, dpe
 }
 
-func TestDiscoPeerEndpointSimple(t *testing.T) {
-	filter := func(dec *disco.DiscoPacket) bool {
-		dec.Header = disco.PongMessage
-
-		return true
-	}
-
-	getStatus := initDiscoPeerEndpoint(t, filter)
-
-	time.Sleep(1 * time.Second)
-
-	if status, rtt := getStatus(); status != ticker.Connected {
-		t.Error("not connected", status)
-	} else if rtt == 0 || rtt >= 1*time.Second {
-		t.Error("invalid duration", rtt)
-	}
+func TestDisco(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Disco Suite")
 }
 
-func TestDiscoPeerEndpointDisconnectAfterConnected(t *testing.T) {
-	var connected atomic.Bool
-	connected.Store(true)
+var _ = Describe("DiscoPeerEndpoint", func() {
+	var statusGetter statusGetter
+	var closer io.Closer
 
-	filter := func(dec *disco.DiscoPacket) bool {
-		dec.Header = disco.PongMessage
+	AfterEach(func() {
+		closer.Close()
+	})
 
-		return connected.Load()
-	}
+	It("simple", func() {
+		statusGetter, closer = initDiscoPeerEndpoint(GinkgoT(), func(dec *disco.DiscoPacket) bool {
+			dec.Header = disco.PongMessage
 
-	getStatus := initDiscoPeerEndpoint(t, filter)
+			return true
+		})
 
-	time.Sleep(1 * time.Second)
+		Eventually(statusGetter).WithTimeout(3 * time.Second).Should(And(
+			HaveField("State", ticker.Connected),
+			HaveField("RTT", Not(Equal(time.Duration(0)))),
+		))
+	})
+	It("re-connect", func() {
+		var connected atomic.Bool
+		connected.Store(true)
 
-	if status, rtt := getStatus(); status != ticker.Connected {
-		t.Error("not connected", status)
-	} else if rtt == 0 || rtt >= 1*time.Second {
-		t.Error("invalid duration", rtt)
-	}
-	connected.Store(false)
+		filter := func(dec *disco.DiscoPacket) bool {
+			dec.Header = disco.PongMessage
 
-	time.Sleep(4 * time.Second)
+			return connected.Load()
+		}
 
-	if status, rtt := getStatus(); status != ticker.Connecting {
-		t.Error("connected", status)
-	} else if rtt != 0 {
-		t.Error("invalid duration", rtt)
-	}
+		statusGetter, closer = initDiscoPeerEndpoint(GinkgoT(), filter)
 
-	connected.Store(true)
+		Eventually(statusGetter).WithTimeout(1 * time.Second).Should(And(
+			HaveField("State", ticker.Connected),
+			HaveField("RTT", Not(Equal(time.Duration(0)))),
+		))
 
-	time.Sleep(1 * time.Second)
+		connected.Store(false)
 
-	if status, rtt := getStatus(); status != ticker.Connected {
-		t.Error("not connected", status)
-	} else if rtt == 0 || rtt >= 1*time.Second {
-		t.Error("invalid duration", rtt)
-	}
-}
+		Eventually(statusGetter).WithTimeout(4 * time.Second).Should(And(
+			HaveField("State", ticker.Connecting),
+			HaveField("RTT", Equal(time.Duration(0))),
+		))
+
+		connected.Store(true)
+
+		Eventually(statusGetter).WithTimeout(1 * time.Second).Should(And(
+			HaveField("State", ticker.Connected),
+			HaveField("RTT", Not(Equal(time.Duration(0)))),
+		))
+	})
+})
