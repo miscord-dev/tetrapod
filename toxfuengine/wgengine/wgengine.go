@@ -39,6 +39,7 @@ type wgEngine struct {
 	ifaceNSNetlink *netlink.Handle
 	ifaceNSHandle  netns.NsHandle
 	iface          *netlink.Wireguard
+	prevConfig     wgtypes.Config
 }
 
 func (e *wgEngine) init() error {
@@ -102,6 +103,45 @@ func (e *wgEngine) init() error {
 	return nil
 }
 
+func (e *wgEngine) reconfigWireguard(client *wgctrl.Client, config wgtypes.Config) error {
+	diff, hasDiff := diffConfigs(config, e.prevConfig)
+
+	if !hasDiff {
+		return nil
+	}
+
+	if err := client.ConfigureDevice(e.ifaceName, diff); err != nil {
+		return fmt.Errorf("failed to configure device: %w", err)
+	}
+
+	e.prevConfig = config
+
+	return nil
+}
+
+func (e *wgEngine) reconfigAddresses(addrs []netlink.Addr) error {
+	current, err := e.ifaceNSNetlink.AddrList(e.iface, netlink.FAMILY_ALL)
+
+	if err != nil {
+		return fmt.Errorf("failed to list addresses for %s: %w", e.ifaceName, err)
+	}
+
+	added, deleted := diffIPs(addrs, current)
+
+	for _, d := range deleted {
+		if err := e.ifaceNSNetlink.AddrDel(e.iface, &d); err != nil {
+			return fmt.Errorf("failed to delete %v: %w", d, err)
+		}
+	}
+	for _, a := range added {
+		if err := e.ifaceNSNetlink.AddrAdd(e.iface, &a); err != nil {
+			return fmt.Errorf("failed to add %v: %w", a, err)
+		}
+	}
+
+	return nil
+}
+
 // TODO(tsuzu): Reuse wgctrl client for better performance
 func (e *wgEngine) Reconfig(config wgtypes.Config, addrs []netlink.Addr) error {
 	return nsutil.RunInNamespace(e.ifaceNSHandle, func() error {
@@ -112,27 +152,11 @@ func (e *wgEngine) Reconfig(config wgtypes.Config, addrs []netlink.Addr) error {
 		}
 		defer client.Close()
 
-		if err := client.ConfigureDevice(e.ifaceName, config); err != nil {
-			return fmt.Errorf("failed to configure device: %w", err)
+		if err := e.reconfigWireguard(client, config); err != nil {
+			return fmt.Errorf("failed to reconfig wireguard: %w", err)
 		}
-
-		current, err := e.ifaceNSNetlink.AddrList(e.iface, netlink.FAMILY_ALL)
-
-		if err != nil {
-			return fmt.Errorf("failed to list addresses for %s: %w", e.ifaceName, err)
-		}
-
-		added, deleted := diffIPs(addrs, current)
-
-		for _, d := range deleted {
-			if err := e.ifaceNSNetlink.AddrDel(e.iface, &d); err != nil {
-				return fmt.Errorf("failed to delete %v: %w", d, err)
-			}
-		}
-		for _, a := range added {
-			if err := e.ifaceNSNetlink.AddrAdd(e.iface, &a); err != nil {
-				return fmt.Errorf("failed to add %v: %w", a, err)
-			}
+		if err := e.reconfigAddresses(addrs); err != nil {
+			return fmt.Errorf("failed to reconfig addresses: %w", err)
 		}
 
 		return nil
