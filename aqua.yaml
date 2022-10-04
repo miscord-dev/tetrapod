@@ -3,7 +3,7 @@
 # https://aquaproj.github.io/
 registries:
 - type: standard
-  ref: v2.16.0 # renovate: depName=aquaproj/aqua-registry
+  ref: v3.64.0 # renovate: depName=aquaproj/aqua-registry
 - name: local
   type: local
   path: aqua/registry.yml
@@ -12,3 +12,6 @@ packages:
 - name: protoc
   registry: local
   version: v3.20.1
+- name: kubernetes-sigs/kubebuilder@v3.7.0
+- name: kubernetes/kubectl
+  version: v1.25.2

@@ -1,0 +1,52 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.9.2
+  creationTimestamp: null
+  name: cidrblocks.controlplane.miscord.win
+spec:
+  group: controlplane.miscord.win
+  names:
+    kind: CIDRBlock
+    listKind: CIDRBlockList
+    plural: cidrblocks
+    singular: cidrblock
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: CIDRBlock is the Schema for the cidrblocks API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: CIDRBlockSpec defines the desired state of CIDRBlock
+            properties:
+              cidr:
+                description: CIDR represents the block of asiggned addresses like
+                  192.168.1.0/24, [fe80::]/32
+                type: string
+            required:
+            - cidr
+            type: object
+          status:
+            description: CIDRBlockStatus defines the observed state of CIDRBlock
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

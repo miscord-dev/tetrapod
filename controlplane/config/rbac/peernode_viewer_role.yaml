@@ -1,0 +1,27 @@
+# permissions for end users to view peernodes.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: peernode-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: controlplane
+    app.kubernetes.io/part-of: controlplane
+    app.kubernetes.io/managed-by: kustomize
+  name: peernode-viewer-role
+rules:
+- apiGroups:
+  - controlplane.miscord.win
+  resources:
+  - peernodes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - controlplane.miscord.win
+  resources:
+  - peernodes/status
+  verbs:
+  - get
