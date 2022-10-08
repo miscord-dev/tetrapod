@@ -55,7 +55,7 @@ type CIDRClaimReconciler struct {
 func (r *CIDRClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	var cidrClaim controlplanev1alpha1.CIDRClaim
 	if err := r.Get(ctx, req.NamespacedName, &cidrClaim); err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to get CIDRClaim: %w", err)
 	}
 
 	if cidrClaim.Generation == cidrClaim.Status.ObservedGeneration &&
@@ -67,7 +67,10 @@ func (r *CIDRClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	selector, err := metav1.LabelSelectorAsSelector(&cidrClaim.Spec.Selector)
 	if err != nil {
-		return ctrl.Result{}, err
+		status.State = controlplanev1alpha1.CIDRClaimStatusStateBindingError
+		status.Message = fmt.Sprintf("selector is invalid: %v", err)
+
+		return ctrl.Result{}, r.updateStatus(ctx, &cidrClaim, status)
 	}
 
 	var cidrBlocks controlplanev1alpha1.CIDRBlockList
@@ -75,7 +78,7 @@ func (r *CIDRClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		Namespace:     req.Namespace,
 		LabelSelector: selector,
 	}); err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to get init selector: %w", err)
 	}
 
 	var cidrClaims controlplanev1alpha1.CIDRClaimList
@@ -84,7 +87,7 @@ func (r *CIDRClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		LabelSelector: selector,
 		FieldSelector: fields.OneTermNotEqualSelector("metadata.name", cidrClaim.Name),
 	}); err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to list CIDRClaims: %w", err)
 	}
 
 	claims := map[string][]controlplanev1alpha1.CIDRClaim{}
@@ -170,7 +173,7 @@ func (r *CIDRClaimReconciler) updateStatus(ctx context.Context, cidrClaim *contr
 	updated.Status.State = status.State
 
 	if err := r.Client.Status().Patch(ctx, updated, client.MergeFrom(cidrClaim)); err != nil {
-		return err
+		return fmt.Errorf("failed to update status: %w", err)
 	}
 
 	return nil
