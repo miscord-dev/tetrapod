@@ -41,6 +41,10 @@ type PeerNodeSpec struct {
 	StaticRoutes []string `json:"staticRoutes"`
 
 	// CIDRClaims are the requests of ip addresses
+	// +patchMergeKey=name
+	// +patchStrategy=merge
+	// +listType=map
+	// +listMapKey=name
 	CIDRClaims []PeerNodeSpecCIDRClaim `json:"addressClaims"`
 }
 
@@ -63,7 +67,7 @@ type PeerNodeSpecCIDRClaim struct {
 	Selector metav1.LabelSelector `json:"selector"`
 
 	// Size is the number of requested addresses
-	// Must be 2^N
+	// Must be 2^N (N>=0)
 	// +kubebuilder:default=1
 	Size int `json:"size"`
 }
@@ -84,16 +88,22 @@ const (
 	PeerNodeStatusStateBindingError PeerNodeStatusState = "bindingError"
 )
 
-type PeerNodeStatusAssignedCIDR struct {
+type PeerNodeStatusCIDRClaim struct {
 	// Name is the identifier of claim
 	Name string `json:"name"`
 
+	// Ready represents the addresses for the last claim are allocated
+	Ready bool `json:"ready"`
+
+	// Message is the error message
+	Message string `json:"message,omitempty"`
+
 	// CIDR represents the block of asiggned addresses like 192.168.1.0/24, [fe80::]/32
-	CIDR string `json:"cidr"`
+	CIDR string `json:"cidr,omitempty"`
 
 	// Size is the number of requested addresses
 	// +kubebuilder:default=1
-	Size int `json:"size"`
+	Size int `json:"size,omitempty"`
 }
 
 // PeerNodeStatus defines the observed state of PeerNode
@@ -110,11 +120,12 @@ type PeerNodeStatus struct {
 	// Message is the error message
 	Message string `json:"message,omitempty"`
 
-	// StaticRoutes are the CIDRs to be routed
-	StaticRoutes []string `json:"staticRoutes"`
-
-	// AssignedCIDRs are assigned addresses for
-	AssignedCIDRs []PeerNodeStatusAssignedCIDR `json:"assignedCIDRs,omitempty"`
+	// CIDRClaims are assigned addresses for this PeerNode
+	// +patchMergeKey=name
+	// +patchStrategy=merge
+	// +listType=map
+	// +listMapKey=name
+	CIDRClaims []PeerNodeStatusCIDRClaim `json:"cidrClaims,omitempty"`
 }
 
 //+kubebuilder:object:root=true
