@@ -18,6 +18,8 @@ package controllers
 
 import (
 	"context"
+	"fmt"
+	"math"
 	"math/rand"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,6 +29,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	controlplanev1alpha1 "github.com/miscord-dev/toxfu/controlplane/api/v1alpha1"
+	"github.com/miscord-dev/toxfu/controlplane/pkg/ipaddrutil"
+	"github.com/seancfoley/ipaddress-go/ipaddr"
 )
 
 // CIDRClaimReconciler reconciles a CIDRClaim object
@@ -71,7 +75,7 @@ func (r *CIDRClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		Namespace:     req.Namespace,
 		LabelSelector: selector,
 	}); err != nil {
-		return ctrl.Result{}, nil
+		return ctrl.Result{}, err
 	}
 
 	var cidrClaims controlplanev1alpha1.CIDRClaimList
@@ -80,16 +84,16 @@ func (r *CIDRClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		LabelSelector: selector,
 		FieldSelector: fields.OneTermNotEqualSelector("metadata.name", cidrClaim.Name),
 	}); err != nil {
-		return ctrl.Result{}, nil
+		return ctrl.Result{}, err
 	}
 
-	var claims map[string][]controlplanev1alpha1.CIDRClaim
+	claims := map[string][]controlplanev1alpha1.CIDRClaim{}
 	for _, claim := range cidrClaims.Items {
-		if claim.Status.Name == "" {
+		if claim.Status.CIDRBlockName == "" {
 			continue
 		}
 
-		claims[claim.Status.Name] = append(claims[claim.Status.Name], claim)
+		claims[claim.Status.CIDRBlockName] = append(claims[claim.Status.CIDRBlockName], claim)
 	}
 
 	items := cidrBlocks.Items
@@ -104,18 +108,58 @@ func (r *CIDRClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		items[i], items[j] = items[j], items[i]
 	})
 
-	r.tryAssignment(&cidrClaim, cidrBlocks.Items, claims)
+	block, allocated, err := r.allocate(&cidrClaim, cidrBlocks.Items, claims)
+
+	if err != nil {
+		status.State = controlplanev1alpha1.CIDRClaimStatusStateBindingError
+		status.Message = err.Error()
+
+		return ctrl.Result{}, r.updateStatus(ctx, &cidrClaim, status)
+	}
+
+	status.State = controlplanev1alpha1.CIDRClaimStatusStateReady
+	status.Message = ""
+	status.CIDR = allocated
+	status.CIDRBlockName = block
+	status.Size = cidrClaim.Spec.Size
 
 	return ctrl.Result{}, nil
 }
 
-func (r *CIDRClaimReconciler) tryAssignment(cidrClaim *controlplanev1alpha1.CIDRClaim, blocks []controlplanev1alpha1.CIDRBlock, usedClaims map[string][]controlplanev1alpha1.CIDRClaim) (string, error) {
-	// for _, block := range blocks {
-	// 	usedClaims := usedClaims[block.Name]
+func (r *CIDRClaimReconciler) allocate(
+	cidrClaim *controlplanev1alpha1.CIDRClaim,
+	blocks []controlplanev1alpha1.CIDRBlock,
+	usedClaims map[string][]controlplanev1alpha1.CIDRClaim,
+) (cidrBlockName, cidr string, err error) {
+	sizeBit := int(math.Log2(float64(cidrClaim.Spec.Size)))
 
-	// 	block.Spec.CIDR
-	// }
-	return "", nil
+	for _, block := range blocks {
+		blockSubnet := ipaddr.NewIPAddressString(block.Spec.CIDR).GetAddress()
+
+		used := []*ipaddr.IPAddress{}
+		for _, claim := range usedClaims[block.Name] {
+			addr := ipaddr.NewIPAddressString(claim.Status.CIDR).GetAddress()
+
+			if addr == nil {
+				continue
+			}
+
+			used = append(used, addr)
+		}
+
+		allocated := ipaddrutil.FindSubBlock(
+			ipaddrutil.FreeBlocks(blockSubnet, used),
+			sizeBit,
+		)
+
+		if allocated == nil {
+			continue
+		}
+
+		return block.Name, allocated.String(), nil
+	}
+
+	return "", "", fmt.Errorf("no available CIDRBlock")
 }
 
 func (r *CIDRClaimReconciler) updateStatus(ctx context.Context, cidrClaim *controlplanev1alpha1.CIDRClaim, status *controlplanev1alpha1.CIDRClaimStatus) error {

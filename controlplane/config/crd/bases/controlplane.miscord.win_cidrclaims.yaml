@@ -98,6 +98,9 @@ spec:
               message:
                 description: Message is the error message
                 type: string
+              name:
+                description: Name of the CIDRBlock
+                type: string
               observedGeneration:
                 description: ObservedGeneration is the observed generation
                 format: int64
@@ -110,9 +113,7 @@ spec:
                 description: State represents the current state
                 type: string
             required:
-            - cidr
             - observedGeneration
-            - size
             - state
             type: object
         type: object

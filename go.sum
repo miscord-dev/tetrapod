@@ -334,6 +334,10 @@ github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6L
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/rogpeppe/go-internal v1.8.1-0.20211023094830-115ce09fd6b4 h1:Ha8xCaq6ln1a+R91Km45Oq6lPXj2Mla6CRJYcuV2h1w=
 github.com/rogpeppe/go-internal v1.8.1-0.20211023094830-115ce09fd6b4/go.mod h1:JeRgkft04UBgHMgCIwADu4Pn6Mtm5d4nPKWu0nJ5d+o=
+github.com/seancfoley/bintree v1.1.0 h1:6J0rj9hLNLIcWSsfYdZ4ZHkMHokaK/PHkak8qyBO/mc=
+github.com/seancfoley/bintree v1.1.0/go.mod h1:CtE6qO6/n9H3V2CAGEC0lpaYr6/OijhNaMG/dt7P70c=
+github.com/seancfoley/ipaddress-go v1.2.1 h1:yEZxnyC6NQEDDPflyQm4KkWozffx1vHWsx+knKBr/n0=
+github.com/seancfoley/ipaddress-go v1.2.1/go.mod h1:/UEVHyrBg1ASVap2ffdY2cq5UMYIX9f3QW3uWSVqpbo=
 github.com/sirupsen/logrus v1.2.0/go.mod h1:LxeOpSwHxABJmUn/MG1IvRgCAasNZTLOkJPxbbu5VWo=
 github.com/sirupsen/logrus v1.4.2/go.mod h1:tLMulIdttU9McNUspp0xgXVQah82FyeX6MwdIuYE2rE=
 github.com/sirupsen/logrus v1.6.0/go.mod h1:7uNnSEd1DgxDLC74fIahvMZmmYsHGZGEOFrfsX/uA88=

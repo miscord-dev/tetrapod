@@ -39,11 +39,11 @@ type CIDRClaimSpec struct {
 type CIDRClaimStatusState string
 
 const (
+	// CIDRClaimStatusStateUnknown represents the unknown state
+	CIDRClaimStatusStateUnknown CIDRClaimStatusState = ""
+
 	// CIDRClaimStatusStateReady represents the ready state
 	CIDRClaimStatusStateReady CIDRClaimStatusState = "ready"
-
-	// CIDRClaimStatusStateUpdating represents the updating state
-	CIDRClaimStatusStateUpdating CIDRClaimStatusState = "updating"
 
 	// CIDRClaimStatusStateBindingError represents the updating state
 	CIDRClaimStatusStateBindingError CIDRClaimStatusState = "bindingError"
@@ -64,7 +64,7 @@ type CIDRClaimStatus struct {
 	Message string `json:"message,omitempty"`
 
 	// Name of the CIDRBlock
-	Name string `json:"name,omitempty"`
+	CIDRBlockName string `json:"name,omitempty"`
 
 	// CIDR represents the block of asiggned addresses like 192.168.1.0/24, [fe80::]/32
 	CIDR string `json:"cidr,omitempty"`
