@@ -123,7 +123,7 @@ func (r *CIDRClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	status.CIDRBlockName = block
 	status.Size = cidrClaim.Spec.Size
 
-	return ctrl.Result{}, nil
+	return ctrl.Result{}, r.updateStatus(ctx, &cidrClaim, status)
 }
 
 func (r *CIDRClaimReconciler) allocate(
