@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -104,7 +105,7 @@ func (r *CIDRClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		status.State = controlplanev1alpha1.CIDRClaimStatusStateBindingError
 		status.Message = "no matching CIDRBlock"
 
-		return ctrl.Result{Requeue: true}, r.updateStatus(ctx, &cidrClaim, status)
+		return ctrl.Result{RequeueAfter: 1 * time.Minute}, r.updateStatus(ctx, &cidrClaim, status)
 	}
 
 	rand.Shuffle(len(items), func(i, j int) {
@@ -117,7 +118,7 @@ func (r *CIDRClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		status.State = controlplanev1alpha1.CIDRClaimStatusStateBindingError
 		status.Message = err.Error()
 
-		return ctrl.Result{}, r.updateStatus(ctx, &cidrClaim, status)
+		return ctrl.Result{RequeueAfter: 1 * time.Minute}, r.updateStatus(ctx, &cidrClaim, status)
 	}
 
 	status.State = controlplanev1alpha1.CIDRClaimStatusStateReady
@@ -169,8 +170,10 @@ func (r *CIDRClaimReconciler) updateStatus(ctx context.Context, cidrClaim *contr
 	updated := cidrClaim.DeepCopy()
 	updated.Status.ObservedGeneration = cidrClaim.Generation
 	updated.Status.CIDR = status.CIDR
+	updated.Status.CIDRBlockName = status.CIDRBlockName
 	updated.Status.Size = status.Size
 	updated.Status.State = status.State
+	updated.Status.Message = status.Message
 
 	if err := r.Client.Status().Patch(ctx, updated, client.MergeFrom(cidrClaim)); err != nil {
 		return fmt.Errorf("failed to update status: %w", err)
