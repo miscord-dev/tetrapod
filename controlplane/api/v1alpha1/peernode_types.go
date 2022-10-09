@@ -66,10 +66,10 @@ type PeerNodeSpecCIDRClaim struct {
 	// Selector is a labal selector of IPAddressRange
 	Selector metav1.LabelSelector `json:"selector"`
 
-	// Size is the number of requested addresses
+	// SizeBit is log2(the number of requested addresses)
 	// Must be 2^N (N>=0)
 	// +kubebuilder:default=1
-	Size int `json:"size"`
+	SizeBit int `json:"size"`
 }
 
 type PeerNodeStatusState string
@@ -101,9 +101,9 @@ type PeerNodeStatusCIDRClaim struct {
 	// CIDR represents the block of asiggned addresses like 192.168.1.0/24, [fe80::]/32
 	CIDR string `json:"cidr,omitempty"`
 
-	// Size is the number of requested addresses
+	// Size is log2(the number of requested addresses)
 	// +kubebuilder:default=1
-	Size int `json:"size,omitempty"`
+	SizeBit int `json:"size,omitempty"`
 }
 
 // PeerNodeStatus defines the observed state of PeerNode

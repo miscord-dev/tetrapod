@@ -118,7 +118,7 @@ func (r *PeerNodeReconciler) reconcileCIDRClaim(
 
 	_, err := ctrl.CreateOrUpdate(ctx, r.Client, cidrClaim, func() error {
 		cidrClaim.Spec.Selector = claim.Selector
-		cidrClaim.Spec.Size = claim.Size
+		cidrClaim.Spec.SizeBit = claim.SizeBit
 
 		return ctrl.SetControllerReference(&peerNode, cidrClaim, r.Scheme)
 	})
@@ -133,7 +133,7 @@ func (r *PeerNodeReconciler) reconcileCIDRClaim(
 	}
 
 	cidrClaimStatus.CIDR = cidrClaim.Status.CIDR
-	cidrClaimStatus.Size = cidrClaim.Status.Size
+	cidrClaimStatus.SizeBit = cidrClaim.Status.SizeBit
 	cidrClaimStatus.Ready = cidrClaim.Generation == cidrClaim.Status.ObservedGeneration ||
 		cidrClaim.Status.State == controlplanev1alpha1.CIDRClaimStatusStateReady
 

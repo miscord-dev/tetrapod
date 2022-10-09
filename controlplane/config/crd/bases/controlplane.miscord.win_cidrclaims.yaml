@@ -82,7 +82,7 @@ spec:
                 x-kubernetes-map-type: atomic
               size:
                 default: 1
-                description: Size is the number of requested addresses
+                description: SizeBit is log2(the number of requested addresses)
                 type: integer
             required:
             - selector
@@ -106,8 +106,7 @@ spec:
                 format: int64
                 type: integer
               size:
-                default: 1
-                description: Size is the number of requested addresses
+                description: SizeBit is log2(the number of requested addresses)
                 type: integer
               state:
                 description: State represents the current state

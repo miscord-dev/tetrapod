@@ -89,8 +89,8 @@ spec:
                       x-kubernetes-map-type: atomic
                     size:
                       default: 1
-                      description: Size is the number of requested addresses Must
-                        be 2^N (N>=0)
+                      description: SizeBit is log2(the number of requested addresses)
+                        Must be 2^N (N>=0)
                       type: integer
                   required:
                   - name
@@ -98,6 +98,9 @@ spec:
                   - size
                   type: object
                 type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               attributes:
                 description: Attributes is a metadata of the node
                 properties:
@@ -151,13 +154,16 @@ spec:
                       type: boolean
                     size:
                       default: 1
-                      description: Size is the number of requested addresses
+                      description: Size is log2(the number of requested addresses)
                       type: integer
                   required:
                   - name
                   - ready
                   type: object
                 type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               message:
                 description: Message is the error message
                 type: string

@@ -31,9 +31,9 @@ type CIDRClaimSpec struct {
 	// Selector is a labal selector of IPAddressRange
 	Selector metav1.LabelSelector `json:"selector"`
 
-	// Size is the number of requested addresses
+	// SizeBit is log2(the number of requested addresses)
 	// +kubebuilder:default=1
-	Size int `json:"size"`
+	SizeBit int `json:"size"`
 }
 
 type CIDRClaimStatusState string
@@ -69,9 +69,8 @@ type CIDRClaimStatus struct {
 	// CIDR represents the block of asiggned addresses like 192.168.1.0/24, [fe80::]/32
 	CIDR string `json:"cidr,omitempty"`
 
-	// Size is the number of requested addresses
-	// +kubebuilder:default=1
-	Size int `json:"size,omitempty"`
+	// SizeBit is log2(the number of requested addresses)
+	SizeBit int `json:"size,omitempty"`
 }
 
 //+kubebuilder:object:root=true

@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"math"
 	"math/rand"
 	"time"
 
@@ -85,7 +84,6 @@ func (r *CIDRClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	var cidrClaims controlplanev1alpha1.CIDRClaimList
 	if err := r.List(ctx, &cidrClaims, &client.ListOptions{
 		Namespace:     req.Namespace,
-		LabelSelector: selector,
 		FieldSelector: fields.OneTermNotEqualSelector("metadata.name", cidrClaim.Name),
 	}); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to list CIDRClaims: %w", err)
@@ -125,7 +123,7 @@ func (r *CIDRClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	status.Message = ""
 	status.CIDR = allocated
 	status.CIDRBlockName = block
-	status.Size = cidrClaim.Spec.Size
+	status.SizeBit = cidrClaim.Spec.SizeBit
 
 	return ctrl.Result{}, r.updateStatus(ctx, &cidrClaim, status)
 }
@@ -135,7 +133,7 @@ func (r *CIDRClaimReconciler) allocate(
 	blocks []controlplanev1alpha1.CIDRBlock,
 	usedClaims map[string][]controlplanev1alpha1.CIDRClaim,
 ) (cidrBlockName, cidr string, err error) {
-	sizeBit := int(math.Log2(float64(cidrClaim.Spec.Size)))
+	sizeBit := cidrClaim.Spec.SizeBit
 
 	for _, block := range blocks {
 		blockSubnet := ipaddr.NewIPAddressString(block.Spec.CIDR).GetAddress()
@@ -171,7 +169,7 @@ func (r *CIDRClaimReconciler) updateStatus(ctx context.Context, cidrClaim *contr
 	updated.Status.ObservedGeneration = cidrClaim.Generation
 	updated.Status.CIDR = status.CIDR
 	updated.Status.CIDRBlockName = status.CIDRBlockName
-	updated.Status.Size = status.Size
+	updated.Status.SizeBit = status.SizeBit
 	updated.Status.State = status.State
 	updated.Status.Message = status.Message
 
