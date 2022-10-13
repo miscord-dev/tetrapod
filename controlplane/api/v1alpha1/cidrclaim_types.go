@@ -32,7 +32,7 @@ type CIDRClaimSpec struct {
 	Selector metav1.LabelSelector `json:"selector"`
 
 	// SizeBit is log2(the number of requested addresses)
-	// +kubebuilder:default=1
+	// +kubebuilder:default=0
 	SizeBit int `json:"size"`
 }
 

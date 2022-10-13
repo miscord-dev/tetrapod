@@ -24,6 +24,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -81,6 +82,10 @@ func (r *CIDRClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, fmt.Errorf("failed to get init selector: %w", err)
 	}
 
+	if r.isReady(cidrClaim, selector, cidrBlocks.Items) {
+		return ctrl.Result{}, nil
+	}
+
 	var cidrClaims controlplanev1alpha1.CIDRClaimList
 	if err := r.List(ctx, &cidrClaims, &client.ListOptions{
 		Namespace:     req.Namespace,
@@ -126,6 +131,29 @@ func (r *CIDRClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	status.SizeBit = cidrClaim.Spec.SizeBit
 
 	return ctrl.Result{}, r.updateStatus(ctx, &cidrClaim, status)
+}
+
+func (r *CIDRClaimReconciler) isReady(
+	claim controlplanev1alpha1.CIDRClaim,
+	selector labels.Selector,
+	blocks []controlplanev1alpha1.CIDRBlock,
+) bool {
+	if claim.Status.State != controlplanev1alpha1.CIDRClaimStatusStateReady {
+		return false
+	}
+
+	var block *controlplanev1alpha1.CIDRBlock
+	for _, b := range blocks {
+		if b.Name == claim.Status.CIDRBlockName {
+			block = &b
+		}
+	}
+
+	if block == nil {
+		return false
+	}
+
+	return selector.Matches(labels.Set(block.Labels))
 }
 
 func (r *CIDRClaimReconciler) allocate(

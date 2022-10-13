@@ -88,7 +88,7 @@ spec:
                       type: object
                       x-kubernetes-map-type: atomic
                     size:
-                      default: 1
+                      default: 0
                       description: SizeBit is log2(the number of requested addresses)
                         Must be 2^N (N>=0)
                       type: integer
@@ -129,7 +129,6 @@ spec:
                 type: array
             required:
             - addressClaims
-            - staticRoutes
             type: object
           status:
             description: PeerNodeStatus defines the observed state of PeerNode
@@ -153,7 +152,6 @@ spec:
                         are allocated
                       type: boolean
                     size:
-                      default: 1
                       description: Size is log2(the number of requested addresses)
                       type: integer
                   required:

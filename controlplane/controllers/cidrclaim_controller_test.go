@@ -15,7 +15,7 @@ import (
 	controlplanev1alpha1 "github.com/miscord-dev/toxfu/controlplane/api/v1alpha1"
 )
 
-var _ = Describe("", func() {
+var _ = Describe("CIDRClaim", func() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	BeforeEach(func() {

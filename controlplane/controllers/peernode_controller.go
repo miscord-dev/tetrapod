@@ -85,6 +85,8 @@ func (r *PeerNodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	if ready {
 		status.State = controlplanev1alpha1.PeerNodeStatusStateReady
+	} else {
+		status.State = controlplanev1alpha1.PeerNodeStatusStateUpdating
 	}
 	if hasError {
 		status.Message = "upserting claims failed"
@@ -112,7 +114,10 @@ func (r *PeerNodeReconciler) reconcileCIDRClaim(
 	cidrClaimStatus := prevStatus.DeepCopy()
 
 	cidrClaim := &controlplanev1alpha1.CIDRClaim{}
-	cidrClaim.Labels[cidrClaimOwnerPeerNodeKey] = peerNode.Name
+
+	cidrClaim.Labels = map[string]string{
+		cidrClaimOwnerPeerNodeKey: peerNode.Name,
+	}
 	cidrClaim.Namespace = peerNode.Namespace
 	cidrClaim.Name = fmt.Sprintf("%s-%s", peerNode.Name, claim.Name)
 
@@ -143,7 +148,7 @@ func (r *PeerNodeReconciler) reconcileCIDRClaim(
 func (r *PeerNodeReconciler) removeUnlinkedClaims(ctx context.Context, peerNode *controlplanev1alpha1.PeerNode) error {
 	claimKeys := map[string]struct{}{}
 	for _, c := range peerNode.Spec.CIDRClaims {
-		claimKeys[c.Name] = struct{}{}
+		claimKeys[fmt.Sprintf("%s-%s", peerNode.Name, c.Name)] = struct{}{}
 	}
 
 	var claimList controlplanev1alpha1.CIDRClaimList
@@ -164,6 +169,7 @@ func (r *PeerNodeReconciler) removeUnlinkedClaims(ctx context.Context, peerNode 
 			continue
 		}
 
+		fmt.Println("deleting", claim.Name, claimKeys)
 		if err := r.Client.Delete(ctx, &claim); err != nil {
 			return fmt.Errorf("failed to delete %s: %w", claim.Name, err)
 		}

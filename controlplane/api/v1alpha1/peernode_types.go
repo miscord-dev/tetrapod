@@ -38,7 +38,7 @@ type PeerNodeSpec struct {
 	Attributes Attributes `json:"attributes,omitempty"`
 
 	// StaticRoutes are the CIDRs to be routed
-	StaticRoutes []string `json:"staticRoutes"`
+	StaticRoutes []string `json:"staticRoutes,omitempty"`
 
 	// CIDRClaims are the requests of ip addresses
 	// +patchMergeKey=name
@@ -68,7 +68,7 @@ type PeerNodeSpecCIDRClaim struct {
 
 	// SizeBit is log2(the number of requested addresses)
 	// Must be 2^N (N>=0)
-	// +kubebuilder:default=1
+	// +kubebuilder:default=0
 	SizeBit int `json:"size"`
 }
 
@@ -102,7 +102,6 @@ type PeerNodeStatusCIDRClaim struct {
 	CIDR string `json:"cidr,omitempty"`
 
 	// Size is log2(the number of requested addresses)
-	// +kubebuilder:default=1
 	SizeBit int `json:"size,omitempty"`
 }
 
