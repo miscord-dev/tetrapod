@@ -40,12 +40,8 @@ type PeerNodeSpec struct {
 	// StaticRoutes are the CIDRs to be routed
 	StaticRoutes []string `json:"staticRoutes,omitempty"`
 
-	// CIDRClaims are the requests of ip addresses
-	// +patchMergeKey=name
-	// +patchStrategy=merge
-	// +listType=map
-	// +listMapKey=name
-	CIDRClaims []PeerNodeSpecCIDRClaim `json:"addressClaims"`
+	// ClaimsSelector is a selector of CIDRClaims for this node
+	ClaimsSelector metav1.LabelSelector `json:"claimsSelector"`
 }
 
 type Attributes struct {
@@ -59,52 +55,6 @@ type Attributes struct {
 	Arch string `json:"arch,omitempty"`
 }
 
-type PeerNodeSpecCIDRClaim struct {
-	// Name is the identifier of claim
-	Name string `json:"name"`
-
-	// Selector is a labal selector of IPAddressRange
-	Selector metav1.LabelSelector `json:"selector"`
-
-	// SizeBit is log2(the number of requested addresses)
-	// Must be 2^N (N>=0)
-	// +kubebuilder:default=0
-	SizeBit int `json:"size"`
-}
-
-type PeerNodeStatusState string
-
-const (
-	// PeerNodeStatusStateUnknown represents the unknown state
-	PeerNodeStatusStateUnknown PeerNodeStatusState = ""
-
-	// PeerNodeStatusStateReady represents the ready state
-	PeerNodeStatusStateReady PeerNodeStatusState = "ready"
-
-	// PeerNodeStatusStateUpdating represents the updating state
-	PeerNodeStatusStateUpdating PeerNodeStatusState = "updating"
-
-	// PeerNodeStatusStateBindingError represents the updating state
-	PeerNodeStatusStateBindingError PeerNodeStatusState = "bindingError"
-)
-
-type PeerNodeStatusCIDRClaim struct {
-	// Name is the identifier of claim
-	Name string `json:"name"`
-
-	// Ready represents the addresses for the last claim are allocated
-	Ready bool `json:"ready"`
-
-	// Message is the error message
-	Message string `json:"message,omitempty"`
-
-	// CIDR represents the block of asiggned addresses like 192.168.1.0/24, [fe80::]/32
-	CIDR string `json:"cidr,omitempty"`
-
-	// Size is log2(the number of requested addresses)
-	SizeBit int `json:"size,omitempty"`
-}
-
 // PeerNodeStatus defines the observed state of PeerNode
 type PeerNodeStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
@@ -113,18 +63,8 @@ type PeerNodeStatus struct {
 	// ObservedGeneration is the observed generation
 	ObservedGeneration int64 `json:"observedGeneration"`
 
-	// State represents the current state
-	State PeerNodeStatusState `json:"state"`
-
 	// Message is the error message
 	Message string `json:"message,omitempty"`
-
-	// CIDRClaims are assigned addresses for this PeerNode
-	// +patchMergeKey=name
-	// +patchStrategy=merge
-	// +listType=map
-	// +listMapKey=name
-	CIDRClaims []PeerNodeStatusCIDRClaim `json:"cidrClaims,omitempty"`
 }
 
 //+kubebuilder:object:root=true
