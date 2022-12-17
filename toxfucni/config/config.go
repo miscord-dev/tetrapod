@@ -1,34 +1,53 @@
 package config
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 
-	"gopkg.in/yaml.v3"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type ControlPlane struct {
+	APIEndpoint string `json:"apiEndpoint"`
+	RootCACert  string `json:"rootCACert"`
+	Token       string `json:"-"`
+	Namespace   string `json:"namespace"`
+
+	Selector metav1.LabelSelector `json:"selector"`
+	SizeBit  int                  `json:"sizeBit"`
+}
+
 type Config struct {
-	Port   int    `yaml:"port"`
-	Prefix string `yaml:"prefix"`
-	DSN    string `yaml:"dsn"`
+	ClusterName string `json:"clusterName"`
+	NodeName    string `json:"nodeName"`
+
+	ControlPlane     ControlPlane `json:"controlPlane"`
+	NetworkNamespace string       `json:"networkNamespace"`
 }
 
 var (
 	configPath string
 
 	defaultConfig = Config{
-		Port:   50051,
-		Prefix: "10.255.255.0/24",
-		DSN:    "file:toxfu.db?mode=rwc&cache=shared&_fk=1",
+		ClusterName: os.Getenv("KUBE_CLUSTER_NAME"),
+		NodeName:    os.Getenv("KUBE_NODE_NAME"),
+		ControlPlane: ControlPlane{
+			APIEndpoint: os.Getenv("CONTROLPLANE_API_ENDPOINT"),
+			RootCACert:  os.Getenv("CONTROLPLANE_API_ROOT_CA_CERT"),
+			Token:       os.Getenv("CONTROLPLANE_API_TOKEN"),
+			Namespace:   os.Getenv("CONTROLPLANE_NAMESPACE"),
+		},
+		NetworkNamespace: loadEnvWithDefault("TOXFU_NETNS", "toxfu0"),
 	}
 )
 
 func init() {
-	flag.StringVar(&configPath, "config", "", "Path to toxfu.yaml")
+	flag.StringVar(&configPath, "config", "", "Path to toxfu.json")
 }
 
-func NewConfig() (*Config, error) {
+func New() (*Config, error) {
 	flag.Parse()
 
 	if configPath == "" {
@@ -43,7 +62,7 @@ func NewConfig() (*Config, error) {
 	defer fp.Close()
 
 	cfg := defaultConfig
-	if err := yaml.NewDecoder(fp).Decode(&cfg); err != nil {
+	if err := json.NewDecoder(fp).Decode(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to decode config file: %w", err)
 	}
 

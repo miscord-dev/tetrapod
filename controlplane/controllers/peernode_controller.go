@@ -32,8 +32,6 @@ type PeerNodeReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-const cidrClaimOwnerPeerNodeKey = "controlplane.miscord.win/owner-peer-node"
-
 //+kubebuilder:rbac:groups=controlplane.miscord.win,resources=peernodes,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=controlplane.miscord.win,resources=peernodes/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=controlplane.miscord.win,resources=peernodes/finalizers,verbs=update

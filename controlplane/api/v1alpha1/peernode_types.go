@@ -37,11 +37,17 @@ type PeerNodeSpec struct {
 	// Attributes is a metadata of the node
 	Attributes Attributes `json:"attributes,omitempty"`
 
+	// Endpoints are public endpoints for other peers connect to
+	Endpoints []string `json:"endpoints"`
+
 	// StaticRoutes are the CIDRs to be routed
 	StaticRoutes []string `json:"staticRoutes,omitempty"`
 
 	// ClaimsSelector is a selector of CIDRClaims for this node
 	ClaimsSelector metav1.LabelSelector `json:"claimsSelector"`
+
+	// AddressesSelector is a selector of CIDRClaims for this node which are assigned to the wireguard interface
+	AddressesSelectorSelector metav1.LabelSelector `json:"addressesSelector"`
 }
 
 type Attributes struct {

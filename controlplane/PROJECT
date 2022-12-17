@@ -30,4 +30,12 @@ resources:
   kind: CIDRClaim
   path: github.com/miscord-dev/toxfu/controlplane/api/v1alpha1
   version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: miscord.win
+  group: controlplane
+  kind: CIDRClaimTemplate
+  path: github.com/miscord-dev/toxfu/controlplane/api/v1alpha1
+  version: v1alpha1
 version: "3"

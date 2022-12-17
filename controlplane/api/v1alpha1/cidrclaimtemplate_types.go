@@ -23,8 +23,8 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// CIDRClaimSpec defines the desired state of CIDRClaim
-type CIDRClaimSpec struct {
+// CIDRClaimTemplateSpec defines the desired state of CIDRClaimTemplate
+type CIDRClaimTemplateSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
@@ -36,64 +36,33 @@ type CIDRClaimSpec struct {
 	SizeBit int `json:"size"`
 }
 
-type CIDRClaimStatusState string
-
-const (
-	// CIDRClaimStatusStateUnknown represents the unknown state
-	CIDRClaimStatusStateUnknown CIDRClaimStatusState = ""
-
-	// CIDRClaimStatusStateReady represents the ready state
-	CIDRClaimStatusStateReady CIDRClaimStatusState = "ready"
-
-	// CIDRClaimStatusStateBindingError represents the updating state
-	CIDRClaimStatusStateBindingError CIDRClaimStatusState = "bindingError"
-)
-
-// CIDRClaimStatus defines the observed state of CIDRClaim
-type CIDRClaimStatus struct {
+// CIDRClaimTemplateStatus defines the observed state of CIDRClaimTemplate
+type CIDRClaimTemplateStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-
-	// ObservedGeneration is the observed generation
-	ObservedGeneration int64 `json:"observedGeneration"`
-
-	// State represents the current state
-	State CIDRClaimStatusState `json:"state"`
-
-	// Message is the error message
-	Message string `json:"message,omitempty"`
-
-	// Name of the CIDRBlock
-	CIDRBlockName string `json:"name,omitempty"`
-
-	// CIDR represents the block of asiggned addresses like 192.168.1.0/24, [fe80::]/32
-	CIDR string `json:"cidr,omitempty"`
-
-	// SizeBit is log2(the number of requested addresses)
-	SizeBit int `json:"size,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// CIDRClaim is the Schema for the cidrclaims API
-type CIDRClaim struct {
+// CIDRClaimTemplate is the Schema for the cidrclaimtemplates API
+type CIDRClaimTemplate struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   CIDRClaimSpec   `json:"spec,omitempty"`
-	Status CIDRClaimStatus `json:"status,omitempty"`
+	Spec   CIDRClaimTemplateSpec   `json:"spec,omitempty"`
+	Status CIDRClaimTemplateStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
-// CIDRClaimList contains a list of CIDRClaim
-type CIDRClaimList struct {
+// CIDRClaimTemplateList contains a list of CIDRClaimTemplate
+type CIDRClaimTemplateList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []CIDRClaim `json:"items"`
+	Items           []CIDRClaimTemplate `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&CIDRClaim{}, &CIDRClaimList{})
+	SchemeBuilder.Register(&CIDRClaimTemplate{}, &CIDRClaimTemplateList{})
 }
