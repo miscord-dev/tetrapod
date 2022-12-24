@@ -92,6 +92,14 @@ func (r *CIDRClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, fmt.Errorf("failed to list CIDRClaims: %w", err)
 	}
 
+	for i := range cidrClaims.Items {
+		if cidrClaims.Items[i].Name == cidrClaim.Name {
+			cidrClaims.Items = append(cidrClaims.Items[:i], cidrClaims.Items[i+1:]...)
+
+			break
+		}
+	}
+
 	claims := map[string][]controlplanev1alpha1.CIDRClaim{}
 	for _, claim := range cidrClaims.Items {
 		if claim.Status.CIDRBlockName == "" {
