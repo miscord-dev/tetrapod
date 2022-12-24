@@ -5,20 +5,20 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.9.2
   creationTimestamp: null
-  name: cidrclaims.controlplane.miscord.win
+  name: cidrclaimtemplates.controlplane.miscord.win
 spec:
   group: controlplane.miscord.win
   names:
-    kind: CIDRClaim
-    listKind: CIDRClaimList
-    plural: cidrclaims
-    singular: cidrclaim
+    kind: CIDRClaimTemplate
+    listKind: CIDRClaimTemplateList
+    plural: cidrclaimtemplates
+    singular: cidrclaimtemplate
   scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: CIDRClaim is the Schema for the cidrclaims API
+        description: CIDRClaimTemplate is the Schema for the cidrclaimtemplates API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -33,7 +33,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: CIDRClaimSpec defines the desired state of CIDRClaim
+            description: CIDRClaimTemplateSpec defines the desired state of CIDRClaimTemplate
             properties:
               selector:
                 description: Selector is a labal selector of CIDRBlock
@@ -80,40 +80,16 @@ spec:
                     type: object
                 type: object
                 x-kubernetes-map-type: atomic
-              size:
+              sizeBit:
                 default: 0
                 description: SizeBit is log2(the number of requested addresses)
                 type: integer
             required:
             - selector
-            - size
+            - sizeBit
             type: object
           status:
-            description: CIDRClaimStatus defines the observed state of CIDRClaim
-            properties:
-              cidr:
-                description: CIDR represents the block of asiggned addresses like
-                  192.168.1.0/24, [fe80::]/32
-                type: string
-              message:
-                description: Message is the error message
-                type: string
-              name:
-                description: Name of the CIDRBlock
-                type: string
-              observedGeneration:
-                description: ObservedGeneration is the observed generation
-                format: int64
-                type: integer
-              size:
-                description: SizeBit is log2(the number of requested addresses)
-                type: integer
-              state:
-                description: State represents the current state
-                type: string
-            required:
-            - observedGeneration
-            - state
+            description: CIDRClaimTemplateStatus defines the observed state of CIDRClaimTemplate
             type: object
         type: object
     served: true

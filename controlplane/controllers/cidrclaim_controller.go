@@ -23,7 +23,6 @@ import (
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -88,8 +87,7 @@ func (r *CIDRClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	var cidrClaims controlplanev1alpha1.CIDRClaimList
 	if err := r.List(ctx, &cidrClaims, &client.ListOptions{
-		Namespace:     req.Namespace,
-		FieldSelector: fields.OneTermNotEqualSelector("metadata.name", cidrClaim.Name),
+		Namespace: req.Namespace,
 	}); err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to list CIDRClaims: %w", err)
 	}

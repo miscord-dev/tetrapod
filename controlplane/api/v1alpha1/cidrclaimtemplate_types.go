@@ -33,7 +33,7 @@ type CIDRClaimTemplateSpec struct {
 
 	// SizeBit is log2(the number of requested addresses)
 	// +kubebuilder:default=0
-	SizeBit int `json:"size"`
+	SizeBit int `json:"sizeBit"`
 }
 
 // CIDRClaimTemplateStatus defines the observed state of CIDRClaimTemplate

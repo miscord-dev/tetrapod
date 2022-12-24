@@ -47,7 +47,7 @@ type PeerNodeSpec struct {
 	ClaimsSelector metav1.LabelSelector `json:"claimsSelector"`
 
 	// AddressesSelector is a selector of CIDRClaims for this node which are assigned to the wireguard interface
-	AddressesSelectorSelector metav1.LabelSelector `json:"addressesSelector"`
+	AddressesSelector metav1.LabelSelector `json:"addressesSelector"`
 }
 
 type Attributes struct {
