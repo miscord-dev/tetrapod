@@ -17,7 +17,9 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"fmt"
 	"os"
+	"strconv"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	configv1alpha1 "sigs.k8s.io/controller-runtime/pkg/config/v1alpha1"
@@ -38,7 +40,7 @@ type ControlPlane struct {
 func loadFromEnv(v *string, key string) {
 	value := os.Getenv(key)
 
-	if value != "" {
+	if value == "" {
 		return
 	}
 
@@ -52,6 +54,28 @@ func (cp *ControlPlane) LoadFromEnv() {
 	loadFromEnv(&cp.Namespace, "TOXFU_CONTROLPLANE_NAMESPACE")
 }
 
+type Wireguard struct {
+	PrivateKey   string `json:"privateKey"`
+	ListenPort   int    `json:"listenPort"`
+	STUNEndpoint string `json:"stunEndpoint"`
+}
+
+func (wg *Wireguard) LoadFromEnv() {
+	loadFromEnv(&wg.PrivateKey, "TOXFU_WG_PRIVATE_KEY")
+	loadFromEnv(&wg.STUNEndpoint, "TOXFU_WG_STUN_ENDPOINT")
+
+	var listenPort string
+	loadFromEnv(&listenPort, "TOXFU_WG_LISTEN_PORT")
+	if listenPort != "" {
+		var err error
+		wg.ListenPort, err = strconv.Atoi(listenPort)
+
+		if err != nil {
+			panic(fmt.Sprintf("%s cannot be parsed into int", listenPort))
+		}
+	}
+}
+
 //+kubebuilder:object:root=true
 
 // CNIConfig is the Schema for the cniconfigs API
@@ -62,6 +86,7 @@ type CNIConfig struct {
 	NodeName                                          string       `json:"nodeName"`
 	ControlPlane                                      ControlPlane `json:"controlPlane"`
 	NetworkNamespace                                  string       `json:"networkNamespace"`
+	Wireguard                                         Wireguard    `json:"wireguard"`
 }
 
 func (cc *CNIConfig) LoadFromEnv() {
@@ -70,4 +95,5 @@ func (cc *CNIConfig) LoadFromEnv() {
 	loadFromEnv(&cc.NetworkNamespace, "TOXFU_NETNS")
 
 	cc.ControlPlane.LoadFromEnv()
+	cc.Wireguard.LoadFromEnv()
 }

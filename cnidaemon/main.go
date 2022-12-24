@@ -22,6 +22,7 @@ import (
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 
@@ -32,7 +33,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	"github.com/go-logr/zapr"
 	controlplanev1alpha1 "github.com/miscord-dev/toxfu/controlplane/api/v1alpha1"
+	"github.com/miscord-dev/toxfu/toxfucni/toxfuengine"
 
 	clientmiscordwinv1alpha1 "github.com/miscord-dev/toxfu/cnidaemon/api/v1alpha1"
 	"github.com/miscord-dev/toxfu/cnidaemon/controllers"
@@ -56,20 +59,23 @@ func init() {
 func main() {
 	var metricsAddr string
 	var probeAddr string
-	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8090", "The address the metric endpoint binds to.")
+	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8091", "The address the probe endpoint binds to.")
 	opts := zap.Options{
 		Development: true,
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	logrLogger := zap.New(zap.UseFlagOptions(&opts))
+	zapLogger := logrLogger.GetSink().(zapr.Underlier).GetUnderlying()
+
+	ctrl.SetLogger(logrLogger)
 
 	options := ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
-		Port:                   9443,
+		Port:                   10443,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         false,
 		LeaderElectionID:       "ddc89635.client.miscord.win",
@@ -87,10 +93,38 @@ func main() {
 	}
 
 	var config clientmiscordwinv1alpha1.CNIConfig
-	options.AndFromOrDie(ctrl.ConfigFile().AtPath("/etc/toxfu/toxfud.yaml").OfKind(&config))
+	configPath := os.Getenv("TOXFU_DAEMON_CONFIG")
+	if configPath == "" {
+		configPath = "/etc/toxfu/toxfud.yaml"
+	}
+
+	options.AndFromOrDie(ctrl.ConfigFile().AtPath(configPath).OfKind(&config))
 
 	config.LoadFromEnv()
 	options.Namespace = config.ControlPlane.Namespace
+
+	if config.Wireguard.PrivateKey == "" {
+		privKey, err := wgtypes.GeneratePrivateKey()
+
+		if err != nil {
+			setupLog.Error(err, "failed to generate private key")
+			os.Exit(1)
+		}
+
+		config.Wireguard.PrivateKey = privKey.String()
+	}
+
+	engine, err := toxfuengine.New("toxfu0", &toxfuengine.Config{
+		PrivateKey:   config.Wireguard.PrivateKey,
+		ListenPort:   config.Wireguard.ListenPort,
+		STUNEndpoint: config.Wireguard.STUNEndpoint,
+	}, zapLogger.Named("toxfu_core"))
+
+	if err != nil {
+		setupLog.Error(err, "failed to setup toxfu core")
+		os.Exit(1)
+	}
+	defer engine.Close()
 
 	var restConfig *rest.Config
 	if config.ControlPlane.APIEndpoint != "" {
@@ -128,13 +162,22 @@ func main() {
 		ControlPlaneNamespace: config.ControlPlane.Namespace,
 		ClusterName:           config.ClusterName,
 		NodeName:              config.NodeName,
+		Engine:                engine,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "PeerNodeSync")
 		os.Exit(1)
 	}
 	if err = (&controllers.PeersSyncReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:                mgr.GetClient(),
+		Scheme:                mgr.GetScheme(),
+		ControlPlaneNamespace: config.ControlPlane.Namespace,
+		ClusterName:           config.ClusterName,
+		NodeName:              config.NodeName,
+		Engine:                engine,
+
+		PrivateKey:   config.Wireguard.PrivateKey,
+		ListenPort:   config.Wireguard.ListenPort,
+		STUNEndpoint: config.Wireguard.STUNEndpoint,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "PeersSync")
 		os.Exit(1)
@@ -151,8 +194,13 @@ func main() {
 	}
 
 	setupLog.Info("starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+
+	ctx := ctrl.SetupSignalHandler()
+
+	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+
+	setupLog.Info("Stopping")
 }

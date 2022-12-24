@@ -68,7 +68,7 @@ func (r *CIDRClaimerReconciler) labels() map[string]string {
 func (r *CIDRClaimerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
-	var tmpl controlplanev1alpha1.CIDRClaim
+	var tmpl controlplanev1alpha1.CIDRClaimTemplate
 
 	err := r.Get(ctx, types.NamespacedName{
 		Namespace: r.ControlPlaneNamespace,
@@ -213,6 +213,7 @@ func (r *CIDRClaimerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	})
 
 	return ctrl.NewControllerManagedBy(mgr).
+		Named("CIDRClaimer").
 		Watches(&source.Channel{
 			Source: ch,
 		}, channelHandler).

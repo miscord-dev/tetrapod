@@ -69,6 +69,10 @@ func (r *PeerNodeSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	peerConfig := r.peerConfig.Load()
 
+	if peerConfig == nil {
+		return ctrl.Result{}, nil
+	}
+
 	var peerNode controlplanev1alpha1.PeerNode
 	peerNode.Namespace = r.ControlPlaneNamespace
 	peerNode.Name = fmt.Sprintf("%s-%s", r.ClusterName, r.NodeName)
@@ -133,7 +137,7 @@ func (r *PeerNodeSyncReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	return ctrl.NewControllerManagedBy(mgr).
 		// Uncomment the following line adding a pointer to an instance of the controlled resource as an argument
-		// For().
+		Named("PeerNodesSync").
 		Watches(&source.Channel{
 			Source: ch,
 		}, channelHandler).

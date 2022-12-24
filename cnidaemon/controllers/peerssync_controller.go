@@ -115,7 +115,7 @@ func (r *PeersSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			continue
 		}
 
-		addressesSelector, err := v1.LabelSelectorAsSelector(&peer.Spec.AddressesSelectorSelector)
+		addressesSelector, err := v1.LabelSelectorAsSelector(&peer.Spec.AddressesSelector)
 
 		if err != nil {
 			logger.Error(err, "failed to get selector from addressesSelector")
@@ -233,8 +233,7 @@ func (r *PeersSyncReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	})
 
 	return ctrl.NewControllerManagedBy(mgr).
-		// Uncomment the following line adding a pointer to an instance of the controlled resource as an argument
-		// For().
+		Named("PeersSync").
 		Watches(&source.Kind{
 			Type: &controlplanev1alpha1.CIDRClaim{},
 		}, controlPlaneClaimHandler).
