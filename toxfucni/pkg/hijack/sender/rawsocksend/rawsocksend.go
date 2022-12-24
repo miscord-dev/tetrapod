@@ -6,6 +6,7 @@ import (
 	"net/netip"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -71,13 +72,23 @@ func (s *Sender) Close() error {
 }
 
 func (s *Sender) Refresh() error {
-	router, err := routing.New()
+	var router routing.Router
+	var err error
+
+	for i := 0; i < 5; i++ {
+		router, err = routing.New()
+
+		if err != nil {
+			if s.logger != nil {
+				s.logger.Error("failed to refresh router", zap.Error(err))
+			}
+
+			time.Sleep(100 * time.Millisecond)
+			continue
+		}
+	}
 
 	if err != nil {
-		if s.logger != nil {
-			s.logger.Error("failed to refresh router", zap.Error(err))
-		}
-
 		return fmt.Errorf("failed to refresh router: %w", err)
 	}
 
