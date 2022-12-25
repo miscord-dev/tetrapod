@@ -42,7 +42,7 @@ func cmdCheck(args *skel.CmdArgs) error {
 }
 
 func cmdAdd(args *skel.CmdArgs) error {
-	ipamConf, confVersion, err := allocator.LoadIPAMConfig(args.StdinData, args.Args)
+	/*ipamConf*/ _, confVersion, err := allocator.LoadIPAMConfig(args.StdinData, args.Args)
 	if err != nil {
 		return err
 	}
