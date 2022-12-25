@@ -1,3 +1,11 @@
+# ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
+ENVTEST_K8S_VERSION = 1.25.0
+ENVTEST ?= $(LOCALBIN)/setup-envtest
+
+LOCALBIN ?= $(shell pwd)/bin
+$(LOCALBIN):
+	mkdir -p $(LOCALBIN)
+
 .PHONY: protoc
 protoc:
 	protoc --go_out=. --go_opt=paths=source_relative \
@@ -23,3 +31,12 @@ deploy: toxfu toxfuarm toxfusaba
 arena:
 	go build ./cmd/toxfutest/
 	rsync -avh ./toxfutest ubuntu@160.248.79.94:/home/ubuntu/
+
+.PHONY: test
+test: manifests generate fmt vet envtest ## Run tests.
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test ./... -coverprofile cover.out
+
+.PHONY: envtest
+envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
+$(ENVTEST): $(LOCALBIN)
+	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
