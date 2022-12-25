@@ -184,7 +184,7 @@ func (r *XDPReceiver) Recv(b []byte) (int, netip.AddrPort, error) {
 	var msg message
 	select {
 	case <-r.closed:
-		return 0, netip.AddrPort{}, fmt.Errorf("closed")
+		return 0, netip.AddrPort{}, ringbuf.ErrClosed
 	case msg = <-r.ch:
 	}
 

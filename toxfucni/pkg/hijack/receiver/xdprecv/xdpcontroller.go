@@ -2,11 +2,13 @@ package xdprecv
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/netip"
 	"sync"
 
+	"github.com/cilium/ebpf/ringbuf"
 	"github.com/miscord-dev/toxfu/toxfucni/pkg/alarm"
 	"github.com/miscord-dev/toxfu/toxfucni/pkg/bgsingleflight"
 	"github.com/miscord-dev/toxfu/toxfucni/pkg/hijack/receiver/xdprecv/xdp"
@@ -97,6 +99,10 @@ func (c *xdpController) Refresh() error {
 			logger := c.Logger.With(zap.String("interface", iface.Name))
 
 			recver, err := xdp.NewXDPReceiver(&iface, c.port, checker)
+
+			if errors.Is(err, ringbuf.ErrClosed) {
+				return
+			}
 
 			if err != nil {
 				logger.Error("failed to set up xdp receiver", zap.Error(err))
