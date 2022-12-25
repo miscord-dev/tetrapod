@@ -99,7 +99,9 @@ func (r *CIDRClaimerReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return reconcile.Result{}, nil
 	}
 
-	go r.AllocatedCallback(claim.Status.CIDR)
+	if r.AllocatedCallback != nil {
+		go r.AllocatedCallback(claim.Status.CIDR)
+	}
 
 	return ctrl.Result{}, nil
 }

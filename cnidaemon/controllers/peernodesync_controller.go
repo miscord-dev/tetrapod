@@ -83,13 +83,13 @@ func (r *PeerNodeSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		peerNode.Spec.ClaimsSelector = v1.LabelSelector{
 			MatchLabels: r.labels(),
 		}
-		peerNode.Spec.ClaimsSelector = v1.LabelSelector{
+		peerNode.Spec.AddressesSelector = v1.LabelSelector{
 			MatchLabels: r.addrsLabels(),
 		}
 
 		peerNode.Spec.Endpoints = peerConfig.Endpoints
 		peerNode.Spec.PublicDiscoKey = peerConfig.PublicDiscoKey
-		peerNode.Spec.PublicDiscoKey = peerConfig.PublicKey
+		peerNode.Spec.PublicKey = peerConfig.PublicKey
 		peerNode.Spec.Attributes.Arch = goruntime.GOARCH
 		peerNode.Spec.Attributes.OS = goruntime.GOOS
 		peerNode.Spec.Attributes.HostName = r.NodeName

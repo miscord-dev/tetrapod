@@ -80,13 +80,13 @@ spec:
                     type: object
                 type: object
                 x-kubernetes-map-type: atomic
-              size:
+              sizeBit:
                 default: 0
                 description: SizeBit is log2(the number of requested addresses)
                 type: integer
             required:
             - selector
-            - size
+            - sizeBit
             type: object
           status:
             description: CIDRClaimStatus defines the observed state of CIDRClaim
@@ -105,7 +105,7 @@ spec:
                 description: ObservedGeneration is the observed generation
                 format: int64
                 type: integer
-              size:
+              sizeBit:
                 description: SizeBit is log2(the number of requested addresses)
                 type: integer
               state:

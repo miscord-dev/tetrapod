@@ -33,7 +33,7 @@ type CIDRClaimSpec struct {
 
 	// SizeBit is log2(the number of requested addresses)
 	// +kubebuilder:default=0
-	SizeBit int `json:"size"`
+	SizeBit int `json:"sizeBit"`
 }
 
 type CIDRClaimStatusState string
@@ -70,7 +70,7 @@ type CIDRClaimStatus struct {
 	CIDR string `json:"cidr,omitempty"`
 
 	// SizeBit is log2(the number of requested addresses)
-	SizeBit int `json:"size,omitempty"`
+	SizeBit int `json:"sizeBit,omitempty"`
 }
 
 //+kubebuilder:object:root=true

@@ -22,6 +22,7 @@ import (
 	"math/rand"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -54,7 +55,13 @@ type CIDRClaimReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
 func (r *CIDRClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	var cidrClaim controlplanev1alpha1.CIDRClaim
-	if err := r.Get(ctx, req.NamespacedName, &cidrClaim); err != nil {
+
+	err := r.Get(ctx, req.NamespacedName, &cidrClaim)
+
+	if errors.IsNotFound(err) {
+		return ctrl.Result{}, nil
+	}
+	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to get CIDRClaim: %w", err)
 	}
 
@@ -92,6 +99,7 @@ func (r *CIDRClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, fmt.Errorf("failed to list CIDRClaims: %w", err)
 	}
 
+	// Filter out self claim
 	for i := range cidrClaims.Items {
 		if cidrClaims.Items[i].Name == cidrClaim.Name {
 			cidrClaims.Items = append(cidrClaims.Items[:i], cidrClaims.Items[i+1:]...)
@@ -121,7 +129,7 @@ func (r *CIDRClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		items[i], items[j] = items[j], items[i]
 	})
 
-	block, allocated, err := r.allocate(&cidrClaim, cidrBlocks.Items, claims)
+	block, allocated, err := r.allocate(&cidrClaim, items, claims)
 
 	if err != nil {
 		status.State = controlplanev1alpha1.CIDRClaimStatusStateBindingError
@@ -172,11 +180,25 @@ func (r *CIDRClaimReconciler) allocate(
 	for _, block := range blocks {
 		blockSubnet := ipaddr.NewIPAddressString(block.Spec.CIDR).GetAddress()
 
+		if blockSubnet == nil {
+			continue
+		}
+
 		used := []*ipaddr.IPAddress{}
 		for _, claim := range usedClaims[block.Name] {
 			addr := ipaddr.NewIPAddressString(claim.Status.CIDR).GetAddress()
 
 			if addr == nil {
+				continue
+			}
+
+			used = append(used, addr)
+		}
+
+		if sizeBit == 0 {
+			addr, err := blockSubnet.SetPrefixLenZeroed(blockSubnet.GetBitCount())
+
+			if err != nil {
 				continue
 			}
 
