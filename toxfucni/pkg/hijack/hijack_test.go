@@ -22,7 +22,7 @@ func TestHijack(t *testing.T) {
 	}
 	defer hijackedConn.Close()
 	hijackedLocalAddr := net.UDPAddr{
-		IP:   net.ParseIP("10.28.100.114"),
+		IP:   net.ParseIP("127.0.0.1"),
 		Port: port,
 	}
 
@@ -35,7 +35,7 @@ func TestHijack(t *testing.T) {
 	}
 	defer oppositeConn.Close()
 	oppositeLocalAddr := net.UDPAddr{
-		IP:   net.ParseIP("10.28.100.114"),
+		IP:   net.ParseIP("127.0.0.1"),
 		Port: oppositePort,
 	}
 
