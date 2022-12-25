@@ -33,7 +33,7 @@ arena:
 	rsync -avh ./toxfutest ubuntu@160.248.79.94:/home/ubuntu/
 
 .PHONY: test
-test: manifests generate fmt vet envtest ## Run tests.
+test: envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test -exec sudo ./... -coverprofile cover.out
 
 .PHONY: envtest
