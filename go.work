@@ -1,7 +1,0 @@
-go 1.19
-
-use .
-
-replace (
-    sigs.k8s.io/controller-runtime => ../controller-runtime
-)
