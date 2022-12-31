@@ -35,6 +35,50 @@ func diffIPs(desired, current []netlink.Addr) (added, deleted []netlink.Addr) {
 	return
 }
 
+func diffRoutes(desired, current []netlink.Route) (added, deleted []netlink.Route) {
+	desiredMap := map[string]netlink.Route{}
+	for _, d := range desired {
+		desiredMap[d.Dst.String()] = d
+	}
+
+	for _, c := range current {
+		r, ok := desiredMap[c.Dst.String()]
+
+		if !ok {
+			deleted = append(deleted, c)
+		} else if r.LinkIndex != c.LinkIndex {
+			deleted = append(deleted, c)
+		} else {
+			delete(desiredMap, c.Dst.String())
+		}
+	}
+
+	for _, d := range desiredMap {
+		added = append(added, d)
+	}
+
+	sort.Slice(added, func(i, j int) bool {
+		return added[i].Dst.String() < added[j].Dst.String()
+	})
+
+	return
+}
+
+func generateRoutesFromWGConfig(config wgtypes.Config, link netlink.Link) []netlink.Route {
+	routes := []netlink.Route{}
+
+	for _, peer := range config.Peers {
+		for _, allowedIPs := range peer.AllowedIPs {
+			routes = append(routes, netlink.Route{
+				Dst:       &allowedIPs,
+				LinkIndex: link.Attrs().Index,
+			})
+		}
+	}
+
+	return routes
+}
+
 func diffConfigs(expected, current wgtypes.Config) (diff wgtypes.Config, hasDiff bool) {
 	if !reflect.DeepEqual(expected.FirewallMark, current.FirewallMark) {
 		hasDiff = true

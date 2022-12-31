@@ -13,7 +13,7 @@ import (
 )
 
 type Monitor interface {
-	Subscribe() *alarm.Subscriber
+	Subscribe() alarm.Subscriber
 	io.Closer
 }
 
@@ -21,10 +21,10 @@ type monitor struct {
 	alarm   *alarm.Alarm
 	conn    *netlink.Conn
 	stopped atomic.Bool
-	Logger  *zap.Logger
+	logger  *zap.Logger
 }
 
-func New() (Monitor, error) {
+func New(logger *zap.Logger) (Monitor, error) {
 	var flag uint32 = unix.RTMGRP_IPV4_IFADDR | unix.RTMGRP_IPV6_IFADDR |
 		unix.RTMGRP_IPV4_ROUTE | unix.RTMGRP_IPV6_ROUTE |
 		unix.RTMGRP_IPV4_RULE
@@ -40,7 +40,7 @@ func New() (Monitor, error) {
 	m := &monitor{
 		alarm:  alarm.New(),
 		conn:   conn,
-		Logger: zap.NewNop(),
+		logger: logger,
 	}
 	go m.run()
 
@@ -60,7 +60,7 @@ func (m *monitor) run() {
 				return
 			}
 
-			m.Logger.Error("receive failed", zap.Error(err))
+			m.logger.Error("receive failed", zap.Error(err))
 			time.Sleep(10 * time.Second)
 
 			continue
@@ -74,7 +74,7 @@ func (m *monitor) run() {
 	}
 }
 
-func (m *monitor) Subscribe() *alarm.Subscriber {
+func (m *monitor) Subscribe() alarm.Subscriber {
 	return m.alarm.Subscribe()
 }
 

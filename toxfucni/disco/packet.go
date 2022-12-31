@@ -106,3 +106,14 @@ const (
 	PingMessage DiscoPacketHeader = 128 + iota
 	PongMessage
 )
+
+func (d DiscoPacketHeader) String() string {
+	switch d {
+	case PingMessage:
+		return "ping"
+	case PongMessage:
+		return "pong"
+	default:
+		return ""
+	}
+}

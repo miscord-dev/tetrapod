@@ -19,6 +19,7 @@ package main
 import (
 	"flag"
 	"os"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -35,6 +36,8 @@ import (
 
 	"github.com/go-logr/zapr"
 	controlplanev1alpha1 "github.com/miscord-dev/toxfu/controlplane/api/v1alpha1"
+	"github.com/miscord-dev/toxfu/toxfucni/pkg/alarm"
+	"github.com/miscord-dev/toxfu/toxfucni/pkg/monitor"
 	"github.com/miscord-dev/toxfu/toxfucni/toxfuengine"
 
 	clientmiscordwinv1alpha1 "github.com/miscord-dev/toxfu/cnidaemon/api/v1alpha1"
@@ -57,6 +60,8 @@ func init() {
 }
 
 func main() {
+	ctx := ctrl.SetupSignalHandler()
+
 	var metricsAddr string
 	var probeAddr string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8090", "The address the metric endpoint binds to.")
@@ -126,6 +131,28 @@ func main() {
 	}
 	defer engine.Close()
 
+	mon, err := monitor.New(zapLogger.Named("monitor"))
+
+	if err != nil {
+		setupLog.Error(err, "failed to set up monitor")
+		os.Exit(1)
+	}
+
+	go func() {
+		s := alarm.NewCombinator(alarm.NewTicker(30*time.Second), mon.Subscribe())
+		defer s.Close()
+
+		for {
+			select {
+			case <-s.C():
+			case <-ctx.Done():
+				return
+			}
+
+			engine.Trigger()
+		}
+	}()
+
 	var restConfig *rest.Config
 	if config.ControlPlane.APIEndpoint != "" {
 		restConfig = &rest.Config{
@@ -194,8 +221,6 @@ func main() {
 	}
 
 	setupLog.Info("starting manager")
-
-	ctx := ctrl.SetupSignalHandler()
 
 	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")

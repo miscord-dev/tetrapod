@@ -56,7 +56,7 @@ func main() {
 		json.NewEncoder(os.Stdout).Encode(pc)
 	})
 
-	mon, err := monitor.New()
+	mon, err := monitor.New(zap.NewNop())
 
 	if err != nil {
 		panic(err)

@@ -80,6 +80,7 @@ func NewDiscoPeer(
 		endpointToEndpointID: syncmap.Map[netip.AddrPort, uint32]{},
 		endpoints:            syncmap.Map[uint32, DiscoPeerEndpoint]{},
 		endpointStatusMap:    syncmap.Map[uint32, DiscoPeerEndpointStatusReadOnly]{},
+		newEndpoint:          newEndpoint,
 		status: &discoPeerStatus{
 			cond: sync.NewCond(&sync.Mutex{}),
 		},
@@ -221,7 +222,7 @@ func (p *discoPeer) EnqueueReceivedPacket(pkt EncryptedDiscoPacket) {
 func (p *discoPeer) handlePing(pkt DiscoPacket) {
 	resp := DiscoPacket{
 		Header:            PongMessage,
-		SrcPublicDiscoKey: p.peerPublicDiscoKey,
+		SrcPublicDiscoKey: p.localPublicDiscoKey,
 		EndpointID:        pkt.EndpointID,
 		ID:                pkt.ID,
 
@@ -263,8 +264,12 @@ func (p *discoPeer) run() {
 			SharedKey: p.sharedKey,
 		}
 		if !decrypted.Decrypt(&pkt) {
+			p.logger.Debug("decryption failed", zap.String("endpoint", pkt.Endpoint.String()))
+
 			continue
 		}
+
+		p.logger.Debug("disco peer message received", zap.String("endpoint", decrypted.Endpoint.String()), zap.String("header", decrypted.Header.String()))
 
 		if decrypted.Header == PingMessage {
 			p.handlePing(decrypted)

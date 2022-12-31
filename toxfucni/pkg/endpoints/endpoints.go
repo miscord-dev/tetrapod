@@ -90,6 +90,8 @@ func (c *Collector) notify() {
 		ipNet := a.(*net.IPNet)
 		addr, _ := netip.AddrFromSlice(ipNet.IP)
 
+		addr = addr.Unmap()
+
 		addrPorts = append(addrPorts, netip.AddrPortFrom(addr, uint16(c.listenPort)))
 	}
 

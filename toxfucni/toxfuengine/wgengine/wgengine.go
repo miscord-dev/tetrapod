@@ -142,6 +142,30 @@ func (e *wgEngine) reconfigAddresses(addrs []netlink.Addr) error {
 	return nil
 }
 
+func (e *wgEngine) reconfigRoutes(config wgtypes.Config) error {
+	current, err := e.ifaceNSNetlink.RouteList(e.iface, netlink.FAMILY_ALL)
+
+	if err != nil {
+		return fmt.Errorf("failed to list addresses for %s: %w", e.ifaceName, err)
+	}
+
+	desired := generateRoutesFromWGConfig(config, e.iface)
+	added, deleted := diffRoutes(desired, current)
+
+	for _, d := range deleted {
+		if err := e.ifaceNSNetlink.RouteDel(&d); err != nil {
+			return fmt.Errorf("failed to delete %s: %w", d.Dst, err)
+		}
+	}
+	for _, a := range added {
+		if err := e.ifaceNSNetlink.RouteAdd(&a); err != nil {
+			return fmt.Errorf("failed to add %s: %w", a.Dst, err)
+		}
+	}
+
+	return nil
+}
+
 // TODO(tsuzu): Reuse wgctrl client for better performance
 func (e *wgEngine) Reconfig(config wgtypes.Config, addrs []netlink.Addr) error {
 	return nsutil.RunInNamespace(e.ifaceNSHandle, func() error {
@@ -157,6 +181,9 @@ func (e *wgEngine) Reconfig(config wgtypes.Config, addrs []netlink.Addr) error {
 		}
 		if err := e.reconfigAddresses(addrs); err != nil {
 			return fmt.Errorf("failed to reconfig addresses: %w", err)
+		}
+		if err := e.reconfigRoutes(config); err != nil {
+			return fmt.Errorf("failed to reconfig routes: %w", err)
 		}
 
 		return nil

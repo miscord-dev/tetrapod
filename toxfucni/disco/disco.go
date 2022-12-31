@@ -142,9 +142,11 @@ func (d *disco) runReceiver() {
 
 		peer, ok := d.peers.Load(pkt.SrcPublicDiscoKey)
 		if !ok {
-			d.logger.Debug("finding peer failed", zap.String("key", base64.StdEncoding.EncodeToString(pkt.SrcPublicDiscoKey[:])))
+			d.logger.Debug("finding peer failed", zap.String("endpoint", pkt.Endpoint.String()), zap.String("key", base64.StdEncoding.EncodeToString(pkt.SrcPublicDiscoKey[:])))
 			continue
 		}
+
+		d.logger.Debug("receiving disco packet", zap.String("endpoint", pkt.Endpoint.String()), zap.String("public_disco_key", pkt.SrcPublicDiscoKey.String()))
 
 		peer.EnqueueReceivedPacket(pkt)
 	}
