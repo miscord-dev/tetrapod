@@ -119,7 +119,7 @@ func main() {
 		config.Wireguard.PrivateKey = privKey.String()
 	}
 
-	engine, err := toxfuengine.New("toxfu0", &toxfuengine.Config{
+	engine, err := toxfuengine.New("toxfu0", "toxfu", &toxfuengine.Config{
 		PrivateKey:   config.Wireguard.PrivateKey,
 		ListenPort:   config.Wireguard.ListenPort,
 		STUNEndpoint: config.Wireguard.STUNEndpoint,
@@ -129,7 +129,11 @@ func main() {
 		setupLog.Error(err, "failed to setup toxfu core")
 		os.Exit(1)
 	}
-	defer engine.Close()
+	defer func() {
+		if config.Cleanup {
+			engine.Close()
+		}
+	}()
 
 	mon, err := monitor.New(zapLogger.Named("monitor"))
 

@@ -58,6 +58,7 @@ type Wireguard struct {
 	PrivateKey   string `json:"privateKey"`
 	ListenPort   int    `json:"listenPort"`
 	STUNEndpoint string `json:"stunEndpoint"`
+	Namespace    string `json:"namespace"`
 }
 
 func (wg *Wireguard) LoadFromEnv() {
@@ -74,6 +75,10 @@ func (wg *Wireguard) LoadFromEnv() {
 			panic(fmt.Sprintf("%s cannot be parsed into int", listenPort))
 		}
 	}
+
+	if wg.Namespace == "" {
+		wg.Namespace = "toxfu"
+	}
 }
 
 //+kubebuilder:object:root=true
@@ -87,6 +92,7 @@ type CNIConfig struct {
 	ControlPlane                                      ControlPlane `json:"controlPlane"`
 	NetworkNamespace                                  string       `json:"networkNamespace"`
 	Wireguard                                         Wireguard    `json:"wireguard"`
+	Cleanup                                           bool         `json:"cleanup"`
 }
 
 func (cc *CNIConfig) LoadFromEnv() {

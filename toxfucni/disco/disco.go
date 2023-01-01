@@ -102,7 +102,7 @@ func (d *disco) runSender() {
 		_, err := d.conn.WriteTo(b, pkt.Endpoint)
 
 		if err != nil {
-			d.logger.Info("sending msg failed", zap.String("endpoint", pkt.Endpoint.String()), zap.Error(err))
+			d.logger.Debug("sending msg failed", zap.String("endpoint", pkt.Endpoint.String()), zap.Error(err))
 		}
 	}
 }

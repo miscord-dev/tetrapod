@@ -38,23 +38,23 @@ type toxfuEngine struct {
 	logger *zap.Logger
 }
 
-func New(ifaceName string, config *Config, logger *zap.Logger) (res ToxfuEngine, err error) {
+func New(ifaceName, netnsName string, config *Config, logger *zap.Logger) (res ToxfuEngine, err error) {
 	engine := &toxfuEngine{
 		logger:            logger,
 		reconfigTriggerCh: make(chan struct{}, 1),
 	}
 
-	if err := engine.init(ifaceName, config); err != nil {
+	if err := engine.init(ifaceName, netnsName, config); err != nil {
 		return nil, fmt.Errorf("failed to init engine: %w", err)
 	}
 
 	return engine, nil
 }
 
-func (e *toxfuEngine) init(ifaceName string, config *Config) error {
+func (e *toxfuEngine) init(ifaceName, netnsName string, config *Config) error {
 	var err error
 
-	e.wgEngine, err = wgengine.New(ifaceName)
+	e.wgEngine, err = wgengine.New(ifaceName, netnsName)
 	if err != nil {
 		return fmt.Errorf("failed to set up wgengine: %w", err)
 	}

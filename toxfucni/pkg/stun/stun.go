@@ -72,7 +72,7 @@ func (s *STUN) run() {
 
 				return
 			}
-			logger.Info("succeed in getting ip address", zap.String("result", xorAddr.String()))
+			logger.Debug("succeed in getting ip address", zap.String("result", xorAddr.String()))
 
 			s.lock.RLock()
 			fn := s.fn

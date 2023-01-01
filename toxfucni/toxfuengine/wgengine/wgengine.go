@@ -1,6 +1,7 @@
 package wgengine
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -19,9 +20,10 @@ type Engine interface {
 
 var _ Engine = &wgEngine{}
 
-func New(ifaceName string) (Engine, error) {
+func New(ifaceName, nsName string) (Engine, error) {
 	e := wgEngine{
 		ifaceName: ifaceName,
+		nsName:    nsName,
 	}
 
 	if err := e.init(); err != nil {
@@ -42,35 +44,98 @@ type wgEngine struct {
 	prevConfig     wgtypes.Config
 }
 
-func (e *wgEngine) init() error {
-	wg := netlink.Wireguard{
-		LinkAttrs: netlink.LinkAttrs{
-			Name: e.ifaceName,
-		},
+func (e *wgEngine) initNamespace() (netns.NsHandle, error) {
+	ns, err := netns.GetFromName(e.nsName)
+
+	switch {
+	case err == nil:
+		return ns, nil
+	case os.IsNotExist(err):
+		// continue
+	default:
+		return 0, fmt.Errorf("failed to find netns %s: %w", e.nsName, err)
 	}
 
-	if err := netlink.LinkAdd(&wg); err != nil {
-		return fmt.Errorf("failed to create wireguard interface: %w", err)
-	}
-
-	nsName := fmt.Sprintf("toxfu_%d", os.Getpid())
-	e.nsName = nsName
-
-	ns, err := nsutil.CreateNamespace(nsName)
+	ns, err = nsutil.CreateNamespace(e.nsName)
 
 	if err != nil {
-		return fmt.Errorf("failed to create netns %s: %w", nsName, err)
+		return 0, fmt.Errorf("failed to create netns %s: %w", e.nsName, err)
 	}
 
-	if err := netlink.LinkSetNsFd(&wg, int(ns)); err != nil {
-		return fmt.Errorf("failed to set ns %s to %s: %w", nsName, e.ifaceName, err)
+	return ns, nil
+}
+
+func (e *wgEngine) initWireguard() (*netlink.Wireguard, error) {
+	var wg *netlink.Wireguard
+
+	// Found in toxfu netns
+
+	link, err := e.ifaceNSNetlink.LinkByName(e.ifaceName)
+
+	switch {
+	case err == nil:
+		var ok bool
+		wg, ok = link.(*netlink.Wireguard)
+
+		if !ok {
+			return nil, fmt.Errorf("the link %s is not wireguard", e.ifaceName)
+		}
+
+		return wg, nil
+	case errors.As(err, &netlink.LinkNotFoundError{}):
+		// continue
+	default:
+		return nil, fmt.Errorf("failed to find the link %s: %w", e.ifaceName, err)
+	}
+
+	// Found in main netns
+
+	link, err = e.mainNSNetlink.LinkByName(e.ifaceName)
+
+	switch {
+	case err == nil:
+		var ok bool
+		wg, ok = link.(*netlink.Wireguard)
+
+		if !ok {
+			return nil, fmt.Errorf("the link %s is not wireguard", e.ifaceName)
+		}
+	case errors.As(err, &netlink.LinkNotFoundError{}):
+		// continue
+	default:
+		return nil, fmt.Errorf("failed to find the link %s: %w", e.ifaceName, err)
+	}
+
+	if wg == nil {
+		wg = &netlink.Wireguard{
+			LinkAttrs: netlink.LinkAttrs{
+				Name: e.ifaceName,
+			},
+		}
+
+		if err := netlink.LinkAdd(wg); err != nil {
+			return nil, fmt.Errorf("failed to create wireguard interface: %w", err)
+		}
+	}
+
+	if err := netlink.LinkSetNsFd(wg, int(e.ifaceNSHandle)); err != nil {
+		return nil, fmt.Errorf("failed to set ns %s to %s: %w", e.nsName, e.ifaceName, err)
+	}
+
+	return wg, nil
+}
+
+func (e *wgEngine) init() error {
+	ns, err := e.initNamespace()
+	if err != nil {
+		return fmt.Errorf("failed to init netns: %w", err)
 	}
 
 	e.ifaceNSHandle = ns
 
 	e.ifaceNSNetlink, err = netlink.NewHandleAt(ns)
 	if err != nil {
-		return fmt.Errorf("failed to initialize handle for %s ns: %w", nsName, err)
+		return fmt.Errorf("failed to initialize handle for %s ns: %w", e.nsName, err)
 	}
 
 	e.mainNSNetlink, err = netlink.NewHandle()
@@ -78,8 +143,14 @@ func (e *wgEngine) init() error {
 		return fmt.Errorf("failed to initialize handle for main ns: %w", err)
 	}
 
+	wg, err := e.initWireguard()
+
+	if err != nil {
+		return fmt.Errorf("failed to init wireguard interface: %w", err)
+	}
+
 	err = nsutil.RunInNamespace(e.ifaceNSHandle, func() error {
-		if err := netlink.LinkSetUp(&wg); err != nil {
+		if err := netlink.LinkSetUp(wg); err != nil {
 			return fmt.Errorf("ip link set %s up failed: %w", wg.LinkAttrs.Name, err)
 		}
 
@@ -98,7 +169,7 @@ func (e *wgEngine) init() error {
 		return fmt.Errorf("failed to set up interfaces: %w", err)
 	}
 
-	e.iface = &wg
+	e.iface = wg
 
 	return nil
 }
