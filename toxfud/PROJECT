@@ -1,8 +1,8 @@
 domain: client.miscord.win
 layout:
 - go.kubebuilder.io/v3
-projectName: cnidaemon
-repo: github.com/miscord-dev/toxfu/cnidaemon
+projectName: toxfud
+repo: github.com/miscord-dev/toxfu/toxfud
 resources:
 - controller: true
   domain: client.miscord.win
@@ -13,7 +13,7 @@ resources:
     namespaced: true
   domain: client.miscord.win
   kind: CNIConfig
-  path: github.com/miscord-dev/toxfu/cnidaemon/api/v1alpha1
+  path: github.com/miscord-dev/toxfu/toxfud/api/v1alpha1
   version: v1alpha1
 - controller: true
   domain: client.miscord.win

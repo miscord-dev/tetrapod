@@ -20,8 +20,8 @@ import (
 	"context"
 	"fmt"
 
-	toxfulabels "github.com/miscord-dev/toxfu/cnidaemon/pkg/labels"
 	controlplanev1alpha1 "github.com/miscord-dev/toxfu/controlplane/api/v1alpha1"
+	toxfulabels "github.com/miscord-dev/toxfu/toxfud/pkg/labels"
 	"github.com/miscord-dev/toxfu/toxfuengine"
 	"github.com/vishvananda/netlink"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"

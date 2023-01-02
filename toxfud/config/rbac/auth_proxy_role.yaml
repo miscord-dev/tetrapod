@@ -5,8 +5,8 @@ metadata:
     app.kubernetes.io/name: clusterrole
     app.kubernetes.io/instance: proxy-role
     app.kubernetes.io/component: kube-rbac-proxy
-    app.kubernetes.io/created-by: cnidaemon
-    app.kubernetes.io/part-of: cnidaemon
+    app.kubernetes.io/created-by: toxfud
+    app.kubernetes.io/part-of: toxfud
     app.kubernetes.io/managed-by: kustomize
   name: proxy-role
 rules:

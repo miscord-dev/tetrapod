@@ -22,8 +22,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/miscord-dev/toxfu/cnidaemon/pkg/labels"
 	controlplanev1alpha1 "github.com/miscord-dev/toxfu/controlplane/api/v1alpha1"
+	"github.com/miscord-dev/toxfu/toxfud/pkg/labels"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"

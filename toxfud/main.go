@@ -40,8 +40,8 @@ import (
 	"github.com/miscord-dev/toxfu/pkg/monitor"
 	"github.com/miscord-dev/toxfu/toxfuengine"
 
-	clientmiscordwinv1alpha1 "github.com/miscord-dev/toxfu/cnidaemon/api/v1alpha1"
-	"github.com/miscord-dev/toxfu/cnidaemon/controllers"
+	clientmiscordwinv1alpha1 "github.com/miscord-dev/toxfu/toxfud/api/v1alpha1"
+	"github.com/miscord-dev/toxfu/toxfud/controllers"
 	//+kubebuilder:scaffold:imports
 )
 
