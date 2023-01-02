@@ -119,7 +119,7 @@ func main() {
 		config.Wireguard.PrivateKey = privKey.String()
 	}
 
-	engine, err := toxfuengine.New("toxfu0", "toxfu", &toxfuengine.Config{
+	engine, err := toxfuengine.New(config.Wireguard.Name, config.Wireguard.VRF, uint32(config.Wireguard.Table), &toxfuengine.Config{
 		PrivateKey:   config.Wireguard.PrivateKey,
 		ListenPort:   config.Wireguard.ListenPort,
 		STUNEndpoint: config.Wireguard.STUNEndpoint,

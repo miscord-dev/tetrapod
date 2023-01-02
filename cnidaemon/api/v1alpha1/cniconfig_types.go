@@ -58,7 +58,9 @@ type Wireguard struct {
 	PrivateKey   string `json:"privateKey"`
 	ListenPort   int    `json:"listenPort"`
 	STUNEndpoint string `json:"stunEndpoint"`
-	Namespace    string `json:"namespace"`
+	Name         string `json:"name"`
+	VRF          string `json:"vrf"`
+	Table        int    `json:"table"`
 }
 
 func (wg *Wireguard) LoadFromEnv() {
@@ -76,8 +78,14 @@ func (wg *Wireguard) LoadFromEnv() {
 		}
 	}
 
-	if wg.Namespace == "" {
-		wg.Namespace = "toxfu"
+	if wg.Name == "" {
+		wg.Name = "toxfu0"
+	}
+	if wg.VRF == "" {
+		wg.VRF = "toxfu-vrf"
+	}
+	if wg.Table == 0 {
+		wg.Table = 1351
 	}
 }
 

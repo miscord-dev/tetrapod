@@ -64,7 +64,7 @@ func diffRoutes(desired, current []netlink.Route) (added, deleted []netlink.Rout
 	return
 }
 
-func generateRoutesFromWGConfig(config wgtypes.Config, link netlink.Link) []netlink.Route {
+func generateRoutesFromWGConfig(config wgtypes.Config, link netlink.Link, table int) []netlink.Route {
 	routes := []netlink.Route{}
 
 	for _, peer := range config.Peers {
@@ -72,6 +72,7 @@ func generateRoutesFromWGConfig(config wgtypes.Config, link netlink.Link) []netl
 			routes = append(routes, netlink.Route{
 				Dst:       &allowedIPs,
 				LinkIndex: link.Attrs().Index,
+				Table:     table,
 			})
 		}
 	}

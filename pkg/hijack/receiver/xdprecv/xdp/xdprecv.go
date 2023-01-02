@@ -214,7 +214,10 @@ func (r *XDPReceiver) Close() error {
 	if r.ringReader != nil {
 		r.ringReader.Close()
 	}
-	defer recover()
+	defer func() {
+		recover()
+	}()
+
 	close(r.closed)
 
 	return nil
