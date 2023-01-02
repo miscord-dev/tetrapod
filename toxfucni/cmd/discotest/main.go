@@ -6,8 +6,8 @@ import (
 	"net/netip"
 	"time"
 
-	"github.com/miscord-dev/toxfu/toxfucni/disco"
-	"github.com/miscord-dev/toxfu/toxfucni/pkg/wgkey"
+	"github.com/miscord-dev/toxfu/disco"
+	"github.com/miscord-dev/toxfu/pkg/wgkey"
 	"go.uber.org/zap"
 )
 

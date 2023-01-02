@@ -36,9 +36,9 @@ import (
 
 	"github.com/go-logr/zapr"
 	controlplanev1alpha1 "github.com/miscord-dev/toxfu/controlplane/api/v1alpha1"
-	"github.com/miscord-dev/toxfu/toxfucni/pkg/alarm"
-	"github.com/miscord-dev/toxfu/toxfucni/pkg/monitor"
-	"github.com/miscord-dev/toxfu/toxfucni/toxfuengine"
+	"github.com/miscord-dev/toxfu/pkg/alarm"
+	"github.com/miscord-dev/toxfu/pkg/monitor"
+	"github.com/miscord-dev/toxfu/toxfuengine"
 
 	clientmiscordwinv1alpha1 "github.com/miscord-dev/toxfu/cnidaemon/api/v1alpha1"
 	"github.com/miscord-dev/toxfu/cnidaemon/controllers"

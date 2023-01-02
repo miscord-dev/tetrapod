@@ -23,7 +23,7 @@ import (
 	"sync/atomic"
 
 	"github.com/miscord-dev/toxfu/cnidaemon/pkg/labels"
-	"github.com/miscord-dev/toxfu/toxfucni/toxfuengine"
+	"github.com/miscord-dev/toxfu/toxfuengine"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"

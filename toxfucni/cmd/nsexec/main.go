@@ -10,7 +10,7 @@ import (
 	"github.com/containernetworking/cni/pkg/types"
 	"github.com/containernetworking/cni/pkg/version"
 	bv "github.com/containernetworking/plugins/pkg/utils/buildversion"
-	"github.com/miscord-dev/toxfu/toxfucni/pkg/nsutil"
+	"github.com/miscord-dev/toxfu/pkg/nsutil"
 	"github.com/vishvananda/netns"
 )
 

@@ -22,7 +22,7 @@ import (
 
 	toxfulabels "github.com/miscord-dev/toxfu/cnidaemon/pkg/labels"
 	controlplanev1alpha1 "github.com/miscord-dev/toxfu/controlplane/api/v1alpha1"
-	"github.com/miscord-dev/toxfu/toxfucni/toxfuengine"
+	"github.com/miscord-dev/toxfu/toxfuengine"
 	"github.com/vishvananda/netlink"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"

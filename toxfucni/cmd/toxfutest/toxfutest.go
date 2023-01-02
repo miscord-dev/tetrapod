@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/miscord-dev/toxfu/toxfucni/pkg/monitor"
-	"github.com/miscord-dev/toxfu/toxfucni/toxfuengine"
+	"github.com/miscord-dev/toxfu/pkg/monitor"
+	"github.com/miscord-dev/toxfu/toxfuengine"
 	"github.com/vishvananda/netlink"
 	"go.uber.org/zap"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
