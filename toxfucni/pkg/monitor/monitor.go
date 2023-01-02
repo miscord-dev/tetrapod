@@ -25,7 +25,7 @@ type monitor struct {
 }
 
 func New(logger *zap.Logger) (Monitor, error) {
-	var flag uint32 = unix.RTMGRP_IPV4_IFADDR | unix.RTMGRP_IPV6_IFADDR |
+	var flag uint32 = unix.RTMGRP_LINK | unix.RTMGRP_IPV4_IFADDR | unix.RTMGRP_IPV6_IFADDR |
 		unix.RTMGRP_IPV4_ROUTE | unix.RTMGRP_IPV6_ROUTE |
 		unix.RTMGRP_IPV4_RULE
 
@@ -69,6 +69,8 @@ func (m *monitor) run() {
 		if len(msgs) == 0 {
 			continue
 		}
+
+		m.logger.Info("getting messages", zap.Int("messages", len(msgs)))
 
 		m.alarm.WakeUpAll()
 	}

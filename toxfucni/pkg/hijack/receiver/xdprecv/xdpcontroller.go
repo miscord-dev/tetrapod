@@ -126,6 +126,7 @@ func (c *xdpController) Refresh() error {
 						if err == nil {
 							continue
 						}
+						logger.Debug("closing receiver", zap.Error(err))
 					}
 
 					recver.Close()

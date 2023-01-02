@@ -196,19 +196,9 @@ func (r *XDPReceiver) Recv(b []byte) (int, netip.AddrPort, error) {
 }
 
 func (r *XDPReceiver) RunHealthCheck() error {
-	link, err := netlink.LinkByName(r.iface.Name)
+	_, err := netlink.LinkByName(r.iface.Name)
 	if err != nil {
 		return fmt.Errorf("failed to find link by name %s: %w", r.iface.Name, err)
-	}
-
-	xdp := link.Attrs().Xdp
-
-	if xdp == nil {
-		return fmt.Errorf("xdp is nil")
-	}
-
-	if xdp.Fd != r.xdpFd {
-		return fmt.Errorf("wrong xdp fd(actual: %v, expected: %v)", xdp.Fd, r.xdpFd)
 	}
 
 	return nil

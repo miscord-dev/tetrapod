@@ -205,6 +205,8 @@ func (e *toxfuEngine) reconfigDisco(cfg *Config) {
 }
 
 func (e *toxfuEngine) reconfig() error {
+	e.hijackConn.Refresh()
+
 	cfg := e.currentConfig.Load()
 
 	privKey, err := wgtypes.ParseKey(cfg.PrivateKey)
