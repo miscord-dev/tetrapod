@@ -1,4 +1,4 @@
-package xdp
+package rawsockrecv
 
 import (
 	"net"
@@ -8,20 +8,12 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/miscord-dev/toxfu/pkg/sets"
-	"github.com/miscord-dev/toxfu/pkg/sliceutil"
 	"github.com/pion/stun"
 )
 
-func TestXDPReceiver(t *testing.T) {
+func TestRawSockReceiver(t *testing.T) {
 	if os.Getuid() != 0 {
 		t.Fatal("This test must be run as root")
-	}
-
-	iface, err := net.InterfaceByName("lo")
-
-	if err != nil {
-		t.Fatal(err)
 	}
 
 	port := 24614
@@ -57,22 +49,7 @@ func TestXDPReceiver(t *testing.T) {
 	}
 	defer senderConnV6.Close()
 
-	netAddrs, err := net.InterfaceAddrs()
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	addrs := sets.FromSlice(sliceutil.Map(netAddrs, func(v net.Addr) netip.Addr {
-		ipNet := v.(*net.IPNet)
-		c, _ := netip.AddrFromSlice(ipNet.IP)
-
-		return c.Unmap()
-	}))
-
-	recver, err := NewXDPReceiver(iface, port, func(a netip.Addr) bool {
-		return addrs.Contains(a)
-	})
+	recver, err := New(port)
 
 	if err != nil {
 		t.Fatal(err)
@@ -89,6 +66,8 @@ func TestXDPReceiver(t *testing.T) {
 		if _, err := senderConn.Write(expected); err != nil {
 			t.Fatal(err)
 		}
+
+		recver.Recv(b) // drops transmitting packet
 
 		len, src, err := recver.Recv(b)
 
@@ -121,6 +100,8 @@ func TestXDPReceiver(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		recver.Recv(b) // drops transmitting packet
+
 		len, src, err := recver.Recv(b)
 
 		if err != nil {
@@ -150,6 +131,8 @@ func TestXDPReceiver(t *testing.T) {
 		if _, err := senderConnV6.Write(expected); err != nil {
 			t.Fatal(err)
 		}
+
+		recver.Recv(b) // drops transmitting packet
 
 		len, src, err := recver.Recv(b)
 
@@ -181,6 +164,8 @@ func TestXDPReceiver(t *testing.T) {
 		if _, err := senderConnV6.Write(expected); err != nil {
 			t.Fatal(err)
 		}
+
+		recver.Recv(b) // drops transmitting packet
 
 		len, src, err := recver.Recv(b)
 
