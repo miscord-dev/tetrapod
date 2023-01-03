@@ -3,8 +3,11 @@ package hijack
 import (
 	"fmt"
 	"net/netip"
+	"os"
+	"strconv"
 
 	"github.com/miscord-dev/toxfu/pkg/hijack/receiver"
+	"github.com/miscord-dev/toxfu/pkg/hijack/receiver/rawsockrecv"
 	"github.com/miscord-dev/toxfu/pkg/hijack/receiver/xdprecv"
 	"github.com/miscord-dev/toxfu/pkg/hijack/sender"
 	"github.com/miscord-dev/toxfu/pkg/hijack/sender/rawsocksend"
@@ -35,12 +38,20 @@ func NewConnWithLogger(port int, logger *zap.Logger) (res *Conn, err error) {
 		}
 	}()
 
-	ctrl, err := xdprecv.NewXDPController(port)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize xdp controller: %w", err)
+	if b, _ := strconv.ParseBool(os.Getenv("TOXFU_DISABLE_XDP")); b {
+		recv, err := rawsockrecv.New(port)
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize rawsock receiver: %w", err)
+		}
+		conn.recver = recv
+	} else {
+		ctrl, err := xdprecv.NewXDPController(port)
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize xdp controller: %w", err)
+		}
+		conn.recver = ctrl
+		ctrl.Logger = conn.logger.With(zap.String("component", "xdp_controller"))
 	}
-	conn.recver = ctrl
-	ctrl.Logger = conn.logger.With(zap.String("component", "xdp_controller"))
 
 	sender, err := rawsocksend.NewSender(port)
 	if err != nil {
