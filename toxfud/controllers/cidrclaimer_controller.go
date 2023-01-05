@@ -18,8 +18,6 @@ package controllers
 
 import (
 	"context"
-	"crypto/sha1"
-	"encoding/hex"
 	"fmt"
 
 	controlplanev1alpha1 "github.com/miscord-dev/toxfu/controlplane/api/v1alpha1"
@@ -43,6 +41,8 @@ type CIDRClaimerReconciler struct {
 	ClusterName           string
 	NodeName              string
 	TemplateName          string
+	ClaimNameGenerator    func() string
+	Labels                func() map[string]string
 	AllocatedCallback     func(cidr string)
 
 	Scheme *runtime.Scheme
@@ -81,7 +81,7 @@ func (r *CIDRClaimerReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	var claim controlplanev1alpha1.CIDRClaim
 	claim.Namespace = r.ControlPlaneNamespace
-	claim.Name = r.claimName()
+	claim.Name = r.ClaimNameGenerator()
 
 	_, err = ctrl.CreateOrUpdate(ctx, r.Client, &claim, func() error {
 		claim.Labels = r.labels()
@@ -104,18 +104,6 @@ func (r *CIDRClaimerReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	return ctrl.Result{}, nil
-}
-
-func (r *CIDRClaimerReconciler) claimName() string {
-	name := fmt.Sprintf("%s-%s", r.ClusterName, r.NodeName)
-
-	if len(name) < 53 {
-		return name
-	}
-
-	hash := sha1.Sum([]byte(name))
-
-	return name[:53-9] + "-" + hex.EncodeToString(hash[:])[:8]
 }
 
 // func (r *CIDRClaimerReconciler) deleteClaims(ctx context.Context, principal string) error {
@@ -173,13 +161,13 @@ func (r *CIDRClaimerReconciler) claimName() string {
 // }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *CIDRClaimerReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *CIDRClaimerReconciler) SetupWithManager(mgr ctrl.Manager, name string) error {
 	ch := make(chan event.GenericEvent, 1)
 	ch <- event.GenericEvent{
 		Object: &unstructured.Unstructured{
 			Object: map[string]any{
 				"metadata": map[string]any{
-					"name": r.NodeName,
+					"name": "example",
 				},
 			},
 		},
@@ -208,14 +196,14 @@ func (r *CIDRClaimerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return []reconcile.Request{
 			{
 				NamespacedName: types.NamespacedName{
-					Name: r.NodeName,
+					Name: "example",
 				},
 			},
 		}
 	})
 
 	return ctrl.NewControllerManagedBy(mgr).
-		Named("CIDRClaimer").
+		Named(name).
 		Watches(&source.Channel{
 			Source: ch,
 		}, channelHandler).

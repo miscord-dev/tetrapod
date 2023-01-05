@@ -17,7 +17,10 @@ limitations under the License.
 package main
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"flag"
+	"fmt"
 	"os"
 	"time"
 
@@ -26,6 +29,7 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -42,6 +46,7 @@ import (
 
 	clientmiscordwinv1alpha1 "github.com/miscord-dev/toxfu/toxfud/api/v1alpha1"
 	"github.com/miscord-dev/toxfu/toxfud/controllers"
+	"github.com/miscord-dev/toxfu/toxfud/pkg/labels"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -167,7 +172,19 @@ func main() {
 			},
 		}
 	} else {
-		restConfig = ctrl.GetConfigOrDie()
+		restConfig, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+			&clientcmd.ClientConfigLoadingRules{
+				ExplicitPath: config.ControlPlane.KubeConfig,
+			},
+			&clientcmd.ConfigOverrides{
+				CurrentContext: config.ControlPlane.Context,
+			},
+		).ClientConfig()
+
+		if err != nil {
+			setupLog.Error(err, "setting rest config for controller failed")
+			os.Exit(1)
+		}
 	}
 
 	mgr, err := ctrl.NewManager(restConfig, options)
@@ -183,7 +200,21 @@ func main() {
 		ClusterName:           config.ClusterName,
 		NodeName:              config.NodeName,
 		TemplateName:          config.ControlPlane.AddressClaimTemplate,
-	}).SetupWithManager(mgr); err != nil {
+		ClaimNameGenerator: func() string {
+			name := fmt.Sprintf("%s-%s", config.ClusterName, config.NodeName)
+
+			if len(name) < 53 {
+				return name
+			}
+
+			hash := sha1.Sum([]byte(name))
+
+			return name[:53-9] + "-" + hex.EncodeToString(hash[:])[:8]
+		},
+		Labels: func() map[string]string {
+			return labels.NodeTypeForNode(config.ClusterName, config.NodeName)
+		},
+	}).SetupWithManager(mgr, "NodeAddressSync"); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CIDRClaimer")
 		os.Exit(1)
 	}
@@ -213,7 +244,18 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "PeersSync")
 		os.Exit(1)
 	}
+	if err = (&controllers.ExtraPodCIDRSyncReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ExtraPodCIDRSync")
+		os.Exit(1)
+	}
+
 	//+kubebuilder:scaffold:builder
+
+	// Setup controllers for CNI
+	SetupCNId(ctx, mgr, config)
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")

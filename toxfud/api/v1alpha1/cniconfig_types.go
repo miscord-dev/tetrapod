@@ -33,6 +33,8 @@ type ControlPlane struct {
 	RootCACert  string `json:"rootCACert"`
 	Token       string `json:"-"`
 	Namespace   string `json:"namespace"`
+	KubeConfig  string `json:"kubeconfig"`
+	Context     string `json:"context"`
 
 	AddressClaimTemplate string `json:"addressClaimTemplate"`
 }
@@ -52,6 +54,8 @@ func (cp *ControlPlane) LoadFromEnv() {
 	loadFromEnv(&cp.RootCACert, "TOXFU_CONTROLPLANE_ROOT_CA_CERT")
 	loadFromEnv(&cp.Token, "TOXFU_CONTROLPLANE_TOKEN")
 	loadFromEnv(&cp.Namespace, "TOXFU_CONTROLPLANE_NAMESPACE")
+	loadFromEnv(&cp.KubeConfig, "TOXFU_CONTROLPLANE_KUBECONFIG")
+	loadFromEnv(&cp.Context, "TOXFU_CONTROLPLANE_CONTEXT")
 }
 
 type Wireguard struct {
@@ -89,6 +93,17 @@ func (wg *Wireguard) LoadFromEnv() {
 	}
 }
 
+type CNIDConfig struct {
+	AddressClaimTemplate string `json:"addressClaimTemplate"`
+	SocketPath           string `json:"socketPath"`
+}
+
+func (c *CNIDConfig) LoadFromEnv() {
+	if c.SocketPath == "" {
+		c.SocketPath = "/run/toxfu/cni.sock"
+	}
+}
+
 //+kubebuilder:object:root=true
 
 // CNIConfig is the Schema for the cniconfigs API
@@ -101,6 +116,7 @@ type CNIConfig struct {
 	NetworkNamespace                                  string       `json:"networkNamespace"`
 	Wireguard                                         Wireguard    `json:"wireguard"`
 	Cleanup                                           bool         `json:"cleanup"`
+	CNID                                              CNIDConfig   `json:"cnid"`
 }
 
 func (cc *CNIConfig) LoadFromEnv() {
@@ -110,4 +126,5 @@ func (cc *CNIConfig) LoadFromEnv() {
 
 	cc.ControlPlane.LoadFromEnv()
 	cc.Wireguard.LoadFromEnv()
+	cc.CNID.LoadFromEnv()
 }

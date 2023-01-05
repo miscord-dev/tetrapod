@@ -23,4 +23,8 @@ resources:
   domain: client.miscord.win
   kind: PeersSync
   version: v1alpha1
+- controller: true
+  domain: client.miscord.win
+  kind: ExtraPodCIDRSync
+  version: v1alpha1
 version: "3"
