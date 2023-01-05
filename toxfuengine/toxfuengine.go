@@ -1,9 +1,11 @@
 package toxfuengine
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/netip"
+	"sort"
 
 	"github.com/miscord-dev/toxfu/disco"
 	"github.com/miscord-dev/toxfu/pkg/endpoints"
@@ -29,11 +31,12 @@ type toxfuEngine struct {
 	hijackConn *hijack.Conn
 	collector  *endpoints.Collector
 
-	discoPrivateKey   wgkey.DiscoPrivateKey
-	currentConfig     atomic.Pointer[Config]
-	endpoints         atomic.Pointer[[]netip.AddrPort]
-	callback          atomic.Pointer[func(PeerConfig)]
-	reconfigTriggerCh chan struct{}
+	discoPrivateKey       wgkey.DiscoPrivateKey
+	currentConfig         atomic.Pointer[Config]
+	endpoints             atomic.Pointer[[]netip.AddrPort]
+	callback              atomic.Pointer[func(PeerConfig)]
+	reconfigTriggerCh     chan struct{}
+	latestDiscoStatusHash atomic.Pointer[string]
 
 	logger *zap.Logger
 }
@@ -275,8 +278,43 @@ func (e *toxfuEngine) reconfig() error {
 	return nil
 }
 
+func (e *toxfuEngine) hasDiscoStatusUpdate() bool {
+	var statusPairs []struct {
+		PubKey   string
+		Endpoint string
+	}
+	for k, v := range e.disco.GetAllStatuses() {
+		statusPairs = append(statusPairs, struct {
+			PubKey   string
+			Endpoint string
+		}{
+			PubKey:   k.String(),
+			Endpoint: v.ActiveEndpoint.String(),
+		})
+	}
+
+	sort.Slice(statusPairs, func(i, j int) bool {
+		return statusPairs[i].PubKey < statusPairs[j].PubKey
+	})
+
+	hash, _ := json.Marshal(statusPairs)
+
+	latestHash := e.latestDiscoStatusHash.Load()
+
+	if latestHash == nil || string(hash) != *latestHash {
+		h := string(hash)
+		e.latestDiscoStatusHash.Store(&h)
+
+		return true
+	}
+
+	return false
+}
+
 func (e *toxfuEngine) discoStatusCallback(wgkey.DiscoPublicKey, disco.DiscoPeerStatusReadOnly) {
-	e.triggerReconfig()
+	if e.hasDiscoStatusUpdate() {
+		e.triggerReconfig()
+	}
 }
 
 func (e *toxfuEngine) Reconfig(cfg *Config) {
