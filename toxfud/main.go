@@ -109,6 +109,7 @@ func main() {
 	}
 
 	options.AndFromOrDie(ctrl.ConfigFile().AtPath(configPath).OfKind(&config))
+	options.LeaderElection = false
 
 	config.LoadFromEnv()
 	options.Namespace = config.ControlPlane.Namespace
@@ -242,13 +243,6 @@ func main() {
 		STUNEndpoint: config.Wireguard.STUNEndpoint,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "PeersSync")
-		os.Exit(1)
-	}
-	if err = (&controllers.ExtraPodCIDRSyncReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ExtraPodCIDRSync")
 		os.Exit(1)
 	}
 

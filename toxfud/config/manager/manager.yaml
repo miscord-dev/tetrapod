@@ -12,7 +12,7 @@ metadata:
   name: system
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: DaemonSet
 metadata:
   name: controller-manager
   namespace: system
@@ -28,7 +28,6 @@ spec:
   selector:
     matchLabels:
       control-plane: controller-manager
-  replicas: 1
   template:
     metadata:
       annotations:
@@ -56,27 +55,15 @@ spec:
       #             operator: In
       #             values:
       #               - linux
-      securityContext:
-        runAsNonRoot: true
-        # TODO(user): For common cases that do not require escalating privileges
-        # it is recommended to ensure that all your Pods/Containers are restrictive.
-        # More info: https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted
-        # Please uncomment the following code if your project does NOT have to work on old Kubernetes
-        # versions < 1.19 or on vendors versions which do NOT support this field by default (i.e. Openshift < 4.11 ).
-        # seccompProfile:
-        #   type: RuntimeDefault
+      hostNetwork: true
       containers:
       - command:
         - /manager
         args:
-        - --leader-elect
         image: controller:latest
         name: manager
         securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - "ALL"
+          privileged: true
         livenessProbe:
           httpGet:
             path: /healthz
@@ -94,9 +81,9 @@ spec:
         resources:
           limits:
             cpu: 500m
-            memory: 128Mi
+            memory: 256Mi
           requests:
             cpu: 10m
-            memory: 64Mi
+            memory: 256Mi
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10

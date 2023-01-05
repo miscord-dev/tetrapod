@@ -187,6 +187,14 @@ func (e *wgEngine) reconfigAddresses(addrs []netlink.Addr) error {
 	return nil
 }
 
+func printRoutes(msg string, routes []netlink.Route) {
+	fmt.Printf("%s: ", msg)
+	for _, r := range routes {
+		fmt.Printf("%s, ", r.Dst.String())
+	}
+	fmt.Println()
+}
+
 func (e *wgEngine) reconfigRoutes(config wgtypes.Config) error {
 	current, err := e.netlink.RouteListFiltered(netlink.FAMILY_ALL, &netlink.Route{
 		LinkIndex: e.wireguard.Attrs().Index,

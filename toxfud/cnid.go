@@ -21,13 +21,6 @@ func SetupCNId(ctx context.Context, mgr manager.Manager, config clientmiscordwin
 		return
 	}
 
-	localCluster, err := cluster.New(ctrl.GetConfigOrDie())
-
-	if err != nil {
-		setupLog.Error(err, "setting up local cluster failed")
-		os.Exit(1)
-	}
-
 	if err := (&controllers.CIDRClaimerReconciler{
 		Client:                mgr.GetClient(),
 		Scheme:                mgr.GetScheme(),
@@ -54,16 +47,25 @@ func SetupCNId(ctx context.Context, mgr manager.Manager, config clientmiscordwin
 		os.Exit(1)
 	}
 
-	if err := (&controllers.ExtraPodCIDRSyncReconciler{
-		Client:                mgr.GetClient(),
-		Scheme:                mgr.GetScheme(),
-		ControlPlaneNamespace: config.ControlPlane.Namespace,
-		ClusterName:           config.ClusterName,
-		NodeName:              config.NodeName,
-		Local:                 localCluster,
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ExtraPodCIDRSync")
-		os.Exit(1)
+	if config.CNID.Extra {
+		localCluster, err := cluster.New(ctrl.GetConfigOrDie())
+
+		if err != nil {
+			setupLog.Error(err, "setting up local cluster failed")
+			os.Exit(1)
+		}
+
+		if err := (&controllers.ExtraPodCIDRSyncReconciler{
+			Client:                mgr.GetClient(),
+			Scheme:                mgr.GetScheme(),
+			ControlPlaneNamespace: config.ControlPlane.Namespace,
+			ClusterName:           config.ClusterName,
+			NodeName:              config.NodeName,
+			Local:                 localCluster,
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create controller", "controller", "ExtraPodCIDRSync")
+			os.Exit(1)
+		}
 	}
 
 	server, err := cniserver.NewServer(config.CNID.SocketPath, cniserver.Options{

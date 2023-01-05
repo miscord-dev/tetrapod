@@ -95,6 +95,7 @@ func (wg *Wireguard) LoadFromEnv() {
 
 type CNIDConfig struct {
 	AddressClaimTemplate string `json:"addressClaimTemplate"`
+	Extra                bool   `json:"extra"`
 	SocketPath           string `json:"socketPath"`
 }
 

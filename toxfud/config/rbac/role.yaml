@@ -6,28 +6,10 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - client.miscord.win
+  - ""
   resources:
-  - cidrclaimers
+  - pods
   verbs:
-  - create
-  - delete
   - get
   - list
-  - patch
-  - update
   - watch
-- apiGroups:
-  - client.miscord.win
-  resources:
-  - cidrclaimers/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - client.miscord.win
-  resources:
-  - cidrclaimers/status
-  verbs:
-  - get
-  - patch
-  - update

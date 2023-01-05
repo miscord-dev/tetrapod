@@ -69,6 +69,7 @@ func generateRoutesFromWGConfig(config wgtypes.Config, link netlink.Link, table 
 
 	for _, peer := range config.Peers {
 		for _, allowedIPs := range peer.AllowedIPs {
+			allowedIPs := allowedIPs
 			routes = append(routes, netlink.Route{
 				Dst:       &allowedIPs,
 				LinkIndex: link.Attrs().Index,
