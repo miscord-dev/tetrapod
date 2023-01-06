@@ -21,6 +21,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/miscord-dev/toxfu/toxfud/pkg/cniserver"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	configv1alpha1 "sigs.k8s.io/controller-runtime/pkg/config/v1alpha1"
 )
@@ -101,7 +102,7 @@ type CNIDConfig struct {
 
 func (c *CNIDConfig) LoadFromEnv() {
 	if c.SocketPath == "" {
-		c.SocketPath = "/run/toxfu/cni.sock"
+		c.SocketPath = cniserver.DefaultSocketPath
 	}
 }
 

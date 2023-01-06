@@ -18,6 +18,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const DefaultSocketPath = "/run/toxfu/cni.sock"
+
 type Options struct {
 	Cache                 cache.Cache
 	ControlPlaneNamespace string
@@ -42,14 +44,17 @@ func NewServer(socketPath string, opt Options) (Server, error) {
 	}
 
 	srv := http.Server{}
-	rpc := rpc.NewServer()
-	rpc.Register(&Handler{
+	rpcServer := rpc.NewServer()
+	rpcServer.Register(&Handler{
 		cache:                 opt.Cache,
 		controlPlaneNamespace: opt.ControlPlaneNamespace,
 		clusterName:           opt.ClusterName,
 		nodeName:              opt.NodeName,
 	})
-	srv.Handler = rpc
+	mux := http.NewServeMux()
+	mux.Handle(rpc.DefaultRPCPath, rpcServer)
+
+	srv.Handler = mux
 
 	return &server{
 		srv: &srv,
@@ -92,7 +97,10 @@ func (h *Handler) newExpBackoff() backoff.BackOff {
 	return exp
 }
 
-func (h *Handler) GetPodCIDRs(cidrClaims *controlplanev1alpha1.CIDRClaimList) error {
+type GetPodCIDRsArgs struct {
+}
+
+func (h *Handler) GetPodCIDRs(args *GetPodCIDRsArgs, cidrClaims *controlplanev1alpha1.CIDRClaimList) error {
 	fn := func() error {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
@@ -127,14 +135,18 @@ func (h *Handler) GetPodCIDRs(cidrClaims *controlplanev1alpha1.CIDRClaimList) er
 	return nil
 }
 
-func (h *Handler) GetExtraPodCIDRs(namespace, name string, cidrClaims *controlplanev1alpha1.CIDRClaimList) error {
+type GetExtraPodCIDRsArgs struct {
+	Namespace, Name string
+}
+
+func (h *Handler) GetExtraPodCIDRs(args *GetExtraPodCIDRsArgs, cidrClaims *controlplanev1alpha1.CIDRClaimList) error {
 	fn := func() error {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
 		err := h.cache.List(ctx, cidrClaims, &client.ListOptions{
 			Namespace:     h.controlPlaneNamespace,
-			LabelSelector: k8slabels.SelectorFromSet(labels.NodeTypeForExtraPodCIDR(h.clusterName, h.nodeName, namespace, name)),
+			LabelSelector: k8slabels.SelectorFromSet(labels.NodeTypeForExtraPodCIDR(h.clusterName, h.nodeName, args.Namespace, args.Name)),
 		})
 
 		if err != nil {

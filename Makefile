@@ -6,31 +6,20 @@ LOCALBIN ?= $(shell pwd)/bin
 $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
 
-.PHONY: protoc
-protoc:
-	protoc --go_out=. --go_opt=paths=source_relative \
-		--go-grpc_out=. --go-grpc_opt=paths=source_relative \
-		proto/api.proto
-
-.PHONY: toxfu toxfusaba all
-toxfu:
-	GOOS=linux GOARCH=amd64 go build -o bin/toxfu ./cmd/toxfu
-
-toxfuarm:
-	GOOS=linux GOARCH=arm64 go build -o bin/toxfuarm ./cmd/toxfu
-
-toxfusaba:
-	go build -o bin/toxfusaba ./cmd/toxfusaba
-
-all: toxfu toxfusaba
-
 deploy: toxfu toxfuarm toxfusaba
 	rsync -avh ./bin/toxfuarm ubuntu@192.168.1.22:/tmp/
 	rsync -avh ./bin/toxfu ubuntu@10.28.100.113:/tmp/
 
 arena:
-	go build ./cmd/toxfutest/
-	rsync -avh ./toxfutest ubuntu@160.248.79.94:/home/ubuntu/
+	rsync -avh ./toxfud/bin/manager ubuntu@160.248.79.94:/home/ubuntu/
+
+.PHONY: init
+init:
+	aqua cp -o bin cnitool bandwidth bridge dhcp firewall host-device host-local ipvlan loopback macvlan portmap ptp sbr static tuning vlan vrf
+
+.PHONY: toxfu-pod-ipam
+toxfu-pod-ipam:
+	go build -o ./bin ./toxfucni/cmd/toxfu-pod-ipam
 
 .PHONY: test
 test: envtest ## Run tests.

@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	controlplanev1alpha1 "github.com/miscord-dev/toxfu/controlplane/api/v1alpha1"
-	"github.com/miscord-dev/toxfu/toxfud/pkg/labels"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -46,10 +45,6 @@ type CIDRClaimerReconciler struct {
 	AllocatedCallback     func(cidr string)
 
 	Scheme *runtime.Scheme
-}
-
-func (r *CIDRClaimerReconciler) labels() map[string]string {
-	return labels.ForNode(r.ClusterName, r.NodeName)
 }
 
 //+kubebuilder:rbac:groups=client.miscord.win,resources=cidrclaimers,verbs=get;list;watch;create;update;patch;delete
@@ -84,7 +79,7 @@ func (r *CIDRClaimerReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	claim.Name = r.ClaimNameGenerator()
 
 	_, err = ctrl.CreateOrUpdate(ctx, r.Client, &claim, func() error {
-		claim.Labels = r.labels()
+		claim.Labels = r.Labels()
 		claim.Spec.Selector = tmpl.Spec.Selector
 		claim.Spec.SizeBit = tmpl.Spec.SizeBit
 
@@ -185,7 +180,7 @@ func (r *CIDRClaimerReconciler) SetupWithManager(mgr ctrl.Manager, name string) 
 	controlPlaneClaimHandler := handler.EnqueueRequestsFromMapFunc(func(o client.Object) []reconcile.Request {
 		cidrClaim := o.(*controlplanev1alpha1.CIDRClaim)
 
-		labels := r.labels()
+		labels := r.Labels()
 
 		for k, v := range labels {
 			if cidrClaim.Labels[k] != v {
