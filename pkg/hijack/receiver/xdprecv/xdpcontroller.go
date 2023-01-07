@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
+	"strings"
 	"sync"
 
 	"github.com/cilium/ebpf/ringbuf"
@@ -141,7 +142,9 @@ func (c *xdpController) Refresh() error {
 				len, addrPort, err := recver.Recv(buf)
 
 				if err != nil {
-					logger.Error("failed to read packet", zap.Error(err))
+					if !strings.Contains(err.Error(), "closed") {
+						logger.Error("failed to read packet", zap.Error(err))
+					}
 
 					return
 				}
