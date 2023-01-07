@@ -77,6 +77,10 @@ func (e *wgEngine) initWireguard() (*netlink.Wireguard, error) {
 		return nil, fmt.Errorf("failed to find the link %s: %w", e.ifaceName, err)
 	}
 
+	if err := netlink.LinkSetMTU(wg, 1280); err != nil {
+		return nil, fmt.Errorf("failed to set MTU: %w", err)
+	}
+
 	return wg, nil
 }
 

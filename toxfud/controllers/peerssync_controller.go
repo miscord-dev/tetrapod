@@ -147,8 +147,6 @@ func (r *PeersSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 			if addressesSelector.Matches(labels.Set(claim.Labels)) {
 				pc.Addresses = append(pc.Addresses, claim.Status.CIDR)
-
-				continue
 			}
 
 			pc.AllowedIPs = append(pc.AllowedIPs, claim.Status.CIDR)
@@ -217,7 +215,7 @@ func (r *PeersSyncReconciler) labels() map[string]string {
 }
 
 func (r *PeersSyncReconciler) addressLabels() map[string]string {
-	return toxfulabels.ForNode(r.ClusterName, r.NodeName)
+	return toxfulabels.NodeTypeForNode(r.ClusterName, r.NodeName)
 }
 
 // SetupWithManager sets up the controller with the Manager.
