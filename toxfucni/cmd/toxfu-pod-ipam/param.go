@@ -32,6 +32,9 @@ func LoadConfig(b []byte) (*allocator.Net, *Config, error) {
 	if config.IPAM.SocketPath == "" {
 		config.IPAM.SocketPath = cniserver.DefaultSocketPath
 	}
+	if config.IPAM.IPAMPlugin == "" {
+		return nil, nil, fmt.Errorf("IPAM plugin is not set")
+	}
 
 	return &net, &config, nil
 }
