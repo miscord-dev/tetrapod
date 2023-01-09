@@ -24,6 +24,7 @@ import (
 
 	"github.com/miscord-dev/toxfu/toxfud/pkg/cniserver"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clientcmdapiv1 "k8s.io/client-go/tools/clientcmd/api/v1"
 	configv1alpha1 "sigs.k8s.io/controller-runtime/pkg/config/v1alpha1"
 )
 
@@ -41,12 +42,13 @@ func loadFromEnv(v *string, key string) {
 }
 
 type ControlPlane struct {
-	APIEndpoint string `json:"apiEndpoint"`
-	RootCACert  string `json:"rootCACert"`
-	Token       string `json:"-"`
-	Namespace   string `json:"namespace"`
-	KubeConfig  string `json:"kubeconfig"`
-	Context     string `json:"context"`
+	APIEndpoint   string                 `json:"apiEndpoint"`
+	RootCACert    string                 `json:"rootCACert"`
+	Token         string                 `json:"-"`
+	Namespace     string                 `json:"namespace"`
+	KubeConfig    string                 `json:"kubeconfig"`
+	KubeConfigRaw *clientcmdapiv1.Config `json:"kubeconfigRaw"`
+	Context       string                 `json:"context"`
 
 	AddressClaimTemplates []string `json:"addressClaimTemplates"`
 }
@@ -59,7 +61,7 @@ func (cp *ControlPlane) LoadFromEnv(configPath string) {
 	loadFromEnv(&cp.KubeConfig, "TOXFU_CONTROLPLANE_KUBECONFIG")
 	loadFromEnv(&cp.Context, "TOXFU_CONTROLPLANE_CONTEXT")
 
-	if !filepath.IsAbs(cp.KubeConfig) {
+	if cp.KubeConfig != "" && !filepath.IsAbs(cp.KubeConfig) {
 		cp.KubeConfig = filepath.Join(filepath.Dir(configPath), cp.KubeConfig)
 	}
 }
@@ -100,11 +102,12 @@ func (wg *Wireguard) LoadFromEnv() {
 }
 
 type CNIDConfig struct {
-	AddressClaimTemplates []string `json:"addressClaimTemplates"`
-	Extra                 bool     `json:"extra"`
-	SocketPath            string   `json:"socketPath"`
-	KubeConfig            string   `json:"kubeconfig"`
-	Context               string   `json:"context"`
+	AddressClaimTemplates []string               `json:"addressClaimTemplates"`
+	Extra                 bool                   `json:"extra"`
+	SocketPath            string                 `json:"socketPath"`
+	KubeConfig            string                 `json:"kubeconfig"`
+	KubeConfigRaw         *clientcmdapiv1.Config `json:"kubeconfigRaw"`
+	Context               string                 `json:"context"`
 }
 
 func (c *CNIDConfig) LoadFromEnv(configPath string) {
@@ -112,7 +115,7 @@ func (c *CNIDConfig) LoadFromEnv(configPath string) {
 		c.SocketPath = cniserver.DefaultSocketPath
 	}
 
-	if !filepath.IsAbs(c.KubeConfig) {
+	if c.KubeConfig != "" && !filepath.IsAbs(c.KubeConfig) {
 		c.KubeConfig = filepath.Join(filepath.Dir(configPath), c.KubeConfig)
 	}
 }

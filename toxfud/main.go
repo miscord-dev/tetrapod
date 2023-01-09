@@ -43,6 +43,8 @@ import (
 	"github.com/miscord-dev/toxfu/pkg/alarm"
 	"github.com/miscord-dev/toxfu/pkg/monitor"
 	"github.com/miscord-dev/toxfu/toxfuengine"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	clientcmdapiv1 "k8s.io/client-go/tools/clientcmd/api/v1"
 
 	clientmiscordwinv1alpha1 "github.com/miscord-dev/toxfu/toxfud/api/v1alpha1"
 	"github.com/miscord-dev/toxfu/toxfud/controllers"
@@ -62,6 +64,8 @@ func init() {
 	//+kubebuilder:scaffold:scheme
 
 	utilruntime.Must(controlplanev1alpha1.AddToScheme(scheme))
+
+	utilruntime.Must(clientcmdapiv1.AddToScheme(scheme))
 }
 
 func main() {
@@ -75,7 +79,6 @@ func main() {
 
 	var metricsAddr string
 	var probeAddr string
-	var kubeconfig string
 	configPath := "/etc/toxfu/toxfud.yaml"
 	if c := os.Getenv("TOXFU_DAEMON_CONFIG"); c != "" {
 		configPath = c
@@ -83,7 +86,6 @@ func main() {
 
 	flagSet.StringVar(&metricsAddr, "metrics-bind-address", ":8090", "The address the metric endpoint binds to.")
 	flagSet.StringVar(&probeAddr, "health-probe-bind-address", ":8091", "The address the probe endpoint binds to.")
-	flagSet.StringVar(&kubeconfig, "kubeconfig", "", "Paths to a kubeconfig. Only required if out-of-cluster.")
 	flagSet.StringVar(&configPath, "config", configPath, "Paths to a toxfu config.")
 	opts := zap.Options{
 		Development: true,
@@ -121,7 +123,7 @@ func main() {
 	options.AndFromOrDie(ctrl.ConfigFile().AtPath(configPath).OfKind(&config))
 	options.LeaderElection = false
 
-	config.LoadFromEnv()
+	config.LoadFromEnv(configPath)
 	options.Namespace = config.ControlPlane.Namespace
 
 	if config.Wireguard.PrivateKey == "" {
@@ -182,14 +184,27 @@ func main() {
 				CAData: []byte(config.ControlPlane.RootCACert),
 			},
 		}
-	} else {
-		if kubeconfig == "" {
-			kubeconfig = config.ControlPlane.KubeConfig
-		}
+	} else if config.ControlPlane.KubeConfigRaw != nil {
+		restConfig, err = clientcmd.BuildConfigFromKubeconfigGetter("", func() (*clientcmdapi.Config, error) {
+			var cfg clientcmdapi.Config
 
+			err := scheme.Convert(config.ControlPlane.KubeConfigRaw, &cfg, nil)
+
+			if err != nil {
+				return nil, err
+			}
+
+			return &cfg, nil
+		})
+
+		if err != nil {
+			setupLog.Error(err, "setting rest config from kubeconfigraw for controller failed")
+			os.Exit(1)
+		}
+	} else {
 		restConfig, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 			&clientcmd.ClientConfigLoadingRules{
-				ExplicitPath: kubeconfig,
+				ExplicitPath: config.ControlPlane.KubeConfig,
 			},
 			&clientcmd.ConfigOverrides{
 				CurrentContext: config.ControlPlane.Context,

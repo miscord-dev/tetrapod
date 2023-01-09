@@ -13,6 +13,7 @@ import (
 	"github.com/miscord-dev/toxfu/toxfud/pkg/labels"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -54,7 +55,19 @@ func SetupCNId(ctx context.Context, mgr manager.Manager, config clientmiscordwin
 		var restConfig *rest.Config
 		var err error
 
-		if config.CNID.KubeConfig != "" {
+		if config.CNID.KubeConfigRaw != nil {
+			restConfig, err = clientcmd.BuildConfigFromKubeconfigGetter("", func() (*clientcmdapi.Config, error) {
+				var cfg clientcmdapi.Config
+
+				err := mgr.GetScheme().Convert(config.CNID.KubeConfigRaw, &cfg, nil)
+
+				if err != nil {
+					return nil, err
+				}
+
+				return &cfg, nil
+			})
+		} else if config.CNID.KubeConfig != "" {
 			restConfig, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 				&clientcmd.ClientConfigLoadingRules{
 					ExplicitPath: config.CNID.KubeConfig,
