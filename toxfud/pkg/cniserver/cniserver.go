@@ -8,12 +8,15 @@ import (
 	"net/rpc"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
 	controlplanev1alpha1 "github.com/miscord-dev/toxfu/controlplane/api/v1alpha1"
 	"github.com/miscord-dev/toxfu/toxfud/pkg/labels"
+	corev1 "k8s.io/api/core/v1"
 	k8slabels "k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -21,10 +24,12 @@ import (
 const DefaultSocketPath = "/run/toxfu/cni.sock"
 
 type Options struct {
-	Cache                 cache.Cache
-	ControlPlaneNamespace string
-	ClusterName           string
-	NodeName              string
+	Cache                    cache.Cache
+	LocalCache               cache.Cache
+	ControlPlaneNamespace    string
+	ClusterName              string
+	NodeName                 string
+	PodAddressClaimTemplates []string
 }
 
 type Server interface {
@@ -46,10 +51,12 @@ func NewServer(socketPath string, opt Options) (Server, error) {
 	srv := http.Server{}
 	rpcServer := rpc.NewServer()
 	rpcServer.Register(&Handler{
-		cache:                 opt.Cache,
-		controlPlaneNamespace: opt.ControlPlaneNamespace,
-		clusterName:           opt.ClusterName,
-		nodeName:              opt.NodeName,
+		cache:                    opt.Cache,
+		localCache:               opt.LocalCache,
+		controlPlaneNamespace:    opt.ControlPlaneNamespace,
+		clusterName:              opt.ClusterName,
+		nodeName:                 opt.NodeName,
+		podAddressClaimTemplates: opt.PodAddressClaimTemplates,
 	})
 	mux := http.NewServeMux()
 	mux.Handle(rpc.DefaultRPCPath, rpcServer)
@@ -76,10 +83,12 @@ func (s *server) Shutdown() {
 }
 
 type Handler struct {
-	cache                 cache.Cache
-	controlPlaneNamespace string
-	clusterName           string
-	nodeName              string
+	cache                    cache.Cache
+	localCache               cache.Cache
+	controlPlaneNamespace    string
+	clusterName              string
+	nodeName                 string
+	podAddressClaimTemplates []string
 }
 
 func (h *Handler) newExpBackoff() backoff.BackOff {
@@ -101,13 +110,18 @@ type GetPodCIDRsArgs struct {
 }
 
 func (h *Handler) GetPodCIDRs(args *GetPodCIDRsArgs, cidrClaims *controlplanev1alpha1.CIDRClaimList) error {
+	templateNames := map[string]struct{}{}
+	for _, tmpl := range h.podAddressClaimTemplates {
+		templateNames[tmpl] = struct{}{}
+	}
+
 	fn := func() error {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
 		err := h.cache.List(ctx, cidrClaims, &client.ListOptions{
 			Namespace:     h.controlPlaneNamespace,
-			LabelSelector: k8slabels.SelectorFromSet(labels.NodeTypeForPodCIDR(h.clusterName, h.nodeName)),
+			LabelSelector: k8slabels.SelectorFromSet(labels.PodCIDRTypeForNode(h.clusterName, h.nodeName, "")),
 		})
 
 		if err != nil {
@@ -121,6 +135,19 @@ func (h *Handler) GetPodCIDRs(args *GetPodCIDRsArgs, cidrClaims *controlplanev1a
 			if !generationOK || !statusOK {
 				return fmt.Errorf("CIDRClaim %s/%s is not ready", h.controlPlaneNamespace, claim.Name)
 			}
+
+			templateName := claim.Labels[labels.TemplateNameLabelKey]
+
+			delete(templateNames, templateName)
+		}
+
+		if len(templateNames) != 0 {
+			names := []string{}
+			for k := range templateNames {
+				names = append(names, k)
+			}
+
+			return fmt.Errorf("CIDRClaim for %s does not exist", strings.Join(names, ", "))
 		}
 
 		return nil
@@ -144,9 +171,24 @@ func (h *Handler) GetExtraPodCIDRs(args *GetExtraPodCIDRsArgs, cidrClaims *contr
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		err := h.cache.List(ctx, cidrClaims, &client.ListOptions{
+		var pod corev1.Pod
+		err := h.localCache.Get(ctx, types.NamespacedName{
+			Namespace: args.Namespace,
+			Name:      args.Name,
+		}, &pod)
+
+		if err != nil {
+			return fmt.Errorf("failed to find pod %s/%s: %w", args.Namespace, args.Name, err)
+		}
+
+		templateNames := map[string]struct{}{}
+		for _, tmpl := range labels.ExtraPODCIDRTemplateNames(pod.Annotations[labels.AnnotationExtraPodCIDRTemplatesKey]) {
+			templateNames[tmpl] = struct{}{}
+		}
+
+		err = h.cache.List(ctx, cidrClaims, &client.ListOptions{
 			Namespace:     h.controlPlaneNamespace,
-			LabelSelector: k8slabels.SelectorFromSet(labels.NodeTypeForExtraPodCIDR(h.clusterName, h.nodeName, args.Namespace, args.Name)),
+			LabelSelector: k8slabels.SelectorFromSet(labels.ExtraPodCIDRTypeForNode(h.clusterName, h.nodeName, args.Namespace, args.Name, "")),
 		})
 
 		if err != nil {
@@ -158,8 +200,19 @@ func (h *Handler) GetExtraPodCIDRs(args *GetExtraPodCIDRsArgs, cidrClaims *contr
 			statusOK := claim.Status.State == controlplanev1alpha1.CIDRClaimStatusStateReady
 
 			if !generationOK || !statusOK {
-				return fmt.Errorf("CIDRClaim %s/%s is not ready", h.controlPlaneNamespace, claim.Name)
+				return fmt.Errorf("extra CIDRClaim %s/%s is not ready", h.controlPlaneNamespace, claim.Name)
 			}
+
+			delete(templateNames, claim.Labels[labels.TemplateNameLabelKey])
+		}
+
+		if len(templateNames) != 0 {
+			names := []string{}
+			for k := range templateNames {
+				names = append(names, k)
+			}
+
+			return fmt.Errorf("extra CIDRClaim for %s does not exist", strings.Join(names, ", "))
 		}
 
 		return nil

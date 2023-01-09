@@ -21,14 +21,15 @@ import (
 	"fmt"
 
 	controlplanev1alpha1 "github.com/miscord-dev/toxfu/controlplane/api/v1alpha1"
+	"github.com/miscord-dev/toxfu/toxfud/pkg/labels"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
@@ -39,9 +40,9 @@ type CIDRClaimerReconciler struct {
 	ControlPlaneNamespace string
 	ClusterName           string
 	NodeName              string
-	TemplateName          string
-	ClaimNameGenerator    func() string
-	Labels                func() map[string]string
+	TemplateNames         []string
+	ClaimNameGenerator    func(templateName string) string
+	Labels                func(templateName string) map[string]string
 	AllocatedCallback     func(cidr string)
 
 	Scheme *runtime.Scheme
@@ -61,13 +62,28 @@ type CIDRClaimerReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
 func (r *CIDRClaimerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	found := false
+	for _, t := range r.TemplateNames {
+		if t == req.Name {
+			found = true
+		}
+	}
+
+	if !found {
+		err := r.deleteUnusedClaims(ctx, r.Labels(req.Name))
+
+		if err != nil {
+			return reconcile.Result{}, fmt.Errorf("failed to delete CIDRClaims for %s: %w", req.Name, err)
+		}
+
+		return reconcile.Result{}, nil
+	}
 
 	var tmpl controlplanev1alpha1.CIDRClaimTemplate
 
 	err := r.Get(ctx, types.NamespacedName{
 		Namespace: r.ControlPlaneNamespace,
-		Name:      r.TemplateName,
+		Name:      req.Name,
 	}, &tmpl)
 
 	if err != nil {
@@ -76,10 +92,10 @@ func (r *CIDRClaimerReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	var claim controlplanev1alpha1.CIDRClaim
 	claim.Namespace = r.ControlPlaneNamespace
-	claim.Name = r.ClaimNameGenerator()
+	claim.Name = r.ClaimNameGenerator(req.Name)
 
 	_, err = ctrl.CreateOrUpdate(ctx, r.Client, &claim, func() error {
-		claim.Labels = r.Labels()
+		claim.Labels = r.Labels(req.Name)
 		claim.Spec.Selector = tmpl.Spec.Selector
 		claim.Spec.SizeBit = tmpl.Spec.SizeBit
 
@@ -101,71 +117,43 @@ func (r *CIDRClaimerReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	return ctrl.Result{}, nil
 }
 
-// func (r *CIDRClaimerReconciler) deleteClaims(ctx context.Context, principal string) error {
-// 	return r.ControlPlaneClusterClient.GetClient().DeleteAllOf(ctx, &controlplanev1alpha1.CIDRClaim{}, &client.DeleteAllOfOptions{
-// 		ListOptions: client.ListOptions{
-// 			Namespace:     r.ControlPlaneNamespace,
-// 			LabelSelector: labels.SelectorFromSet(r.labels()),
-// 		},
-// 	})
-// }
+func (r *CIDRClaimerReconciler) deleteUnusedClaims(ctx context.Context, l map[string]string) error {
+	labels := k8slabels.SelectorFromSet(l)
 
-// func (r *CIDRClaimerReconciler) reconcileClaims(ctx context.Context, status *addrstore.ClaimStatus, principal, templateName string) error {
-// 	var template controlplanev1alpha1.CIDRClaimTemplate
-// 	err := r.ControlPlaneClusterClient.GetCache().Get(ctx, types.NamespacedName{
-// 		Namespace: r.ControlPlaneNamespace,
-// 		Name:      templateName,
-// 	}, &template)
+	err := r.DeleteAllOf(ctx, &controlplanev1alpha1.CIDRClaim{}, &client.DeleteAllOfOptions{
+		ListOptions: client.ListOptions{
+			Namespace:     r.ControlPlaneNamespace,
+			LabelSelector: labels,
+		},
+	})
 
-// 	if errors.IsNotFound(err) {
-// 		status.Error = fmt.Sprintf("template %s is not found", templateName)
+	if err != nil {
+		return fmt.Errorf("delete all CIDRClaims of %s in %s: %w", labels.String(), r.ControlPlaneNamespace, err)
+	}
 
-// 		return nil
-// 	}
-
-// 	if err != nil {
-// 		return fmt.Errorf("failed to find template: %w", err)
-// 	}
-
-// 	var claim controlplanev1alpha1.CIDRClaim
-
-// 	claim.Name = r.claimName(principal)
-// 	claim.Namespace = r.ControlPlaneNamespace
-
-// 	_, err = ctrl.CreateOrUpdate(ctx, r.ControlPlaneClusterClient.GetClient(), &claim, func() error {
-// 		claim.Spec.Selector = template.Spec.Selector
-// 		claim.Spec.SizeBit = template.Spec.SizeBit
-
-// 		return nil
-// 	})
-
-// 	if err != nil {
-// 		return fmt.Errorf("failed to upsert cidr claim %s: %w", claim.Name, err)
-// 	}
-
-// 	switch claim.Status.State {
-// 	case controlplanev1alpha1.CIDRClaimStatusStateReady:
-// 		status.CIDR = claim.Status.CIDR
-// 		status.Ready = true
-// 	case controlplanev1alpha1.CIDRClaimStatusStateBindingError:
-// 		status.Error = claim.Status.Message
-// 	case controlplanev1alpha1.CIDRClaimStatusStateUnknown:
-// 	}
-
-// 	return nil
-// }
+	return nil
+}
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *CIDRClaimerReconciler) SetupWithManager(mgr ctrl.Manager, name string) error {
-	ch := make(chan event.GenericEvent, 1)
-	ch <- event.GenericEvent{
-		Object: &unstructured.Unstructured{
-			Object: map[string]any{
-				"metadata": map[string]any{
-					"name": "example",
+	templateNames := map[string]struct{}{}
+	ch := make(chan event.GenericEvent, len(r.TemplateNames))
+	for _, t := range r.TemplateNames {
+		_, ok := templateNames[t]
+
+		if ok {
+			return fmt.Errorf("%s is duplicated", t)
+		}
+
+		ch <- event.GenericEvent{
+			Object: &unstructured.Unstructured{
+				Object: map[string]any{
+					"metadata": map[string]any{
+						"name": t,
+					},
 				},
 			},
-		},
+		}
 	}
 
 	channelHandler := handler.EnqueueRequestsFromMapFunc(func(o client.Object) []reconcile.Request {
@@ -180,7 +168,8 @@ func (r *CIDRClaimerReconciler) SetupWithManager(mgr ctrl.Manager, name string) 
 	controlPlaneClaimHandler := handler.EnqueueRequestsFromMapFunc(func(o client.Object) []reconcile.Request {
 		cidrClaim := o.(*controlplanev1alpha1.CIDRClaim)
 
-		labels := r.Labels()
+		templateName := cidrClaim.Labels[labels.TemplateNameLabelKey]
+		labels := r.Labels(templateName)
 
 		for k, v := range labels {
 			if cidrClaim.Labels[k] != v {
@@ -188,10 +177,14 @@ func (r *CIDRClaimerReconciler) SetupWithManager(mgr ctrl.Manager, name string) 
 			}
 		}
 
+		if templateName == "" {
+			return nil
+		}
+
 		return []reconcile.Request{
 			{
 				NamespacedName: types.NamespacedName{
-					Name: "example",
+					Name: templateName,
 				},
 			},
 		}

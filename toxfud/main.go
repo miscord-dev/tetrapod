@@ -200,9 +200,9 @@ func main() {
 		ControlPlaneNamespace: config.ControlPlane.Namespace,
 		ClusterName:           config.ClusterName,
 		NodeName:              config.NodeName,
-		TemplateName:          config.ControlPlane.AddressClaimTemplate,
-		ClaimNameGenerator: func() string {
-			name := fmt.Sprintf("%s-%s", config.ClusterName, config.NodeName)
+		TemplateNames:         config.ControlPlane.AddressClaimTemplates,
+		ClaimNameGenerator: func(templateName string) string {
+			name := fmt.Sprintf("%s-%s-%s", config.ClusterName, config.NodeName, templateName)
 
 			if len(name) < 53 {
 				return name
@@ -212,7 +212,7 @@ func main() {
 
 			return name[:53-9] + "-" + hex.EncodeToString(hash[:])[:8]
 		},
-		Labels: func() map[string]string {
+		Labels: func(templateName string) map[string]string {
 			return labels.NodeTypeForNode(config.ClusterName, config.NodeName)
 		},
 	}).SetupWithManager(mgr, "NodeAddressSync"); err != nil {

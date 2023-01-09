@@ -77,48 +77,55 @@ func (r *ExtraPodCIDRSyncReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return reconcile.Result{}, fmt.Errorf("failed to get Pod: %w", err)
 	}
 
-	extraTemplate := pod.Annotations[labels.AnnotationExtraPodCIDRTemplateKey]
-	claimName := r.claimName(req.Namespace, req.Name)
+	templateNames := labels.ExtraPODCIDRTemplateNames(pod.Annotations[labels.AnnotationExtraPodCIDRTemplatesKey])
 
-	var tmpl controlplanev1alpha1.CIDRClaimTemplate
-	err = r.Get(ctx, types.NamespacedName{
-		Namespace: r.ControlPlaneNamespace,
-		Name:      extraTemplate,
-	}, &tmpl)
+	for _, templateName := range templateNames {
+		templateName = strings.TrimSpace(templateName)
 
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to find template: %w", err)
-	}
+		claimName := r.claimName(req.Namespace, req.Name, templateName)
 
-	var claim controlplanev1alpha1.CIDRClaim
-	claim.Namespace = r.ControlPlaneNamespace
-	claim.Name = claimName
+		var tmpl controlplanev1alpha1.CIDRClaimTemplate
+		err = r.Get(ctx, types.NamespacedName{
+			Namespace: r.ControlPlaneNamespace,
+			Name:      templateName,
+		}, &tmpl)
 
-	_, err = ctrl.CreateOrUpdate(ctx, r.Client, &claim, func() error {
-		claim.Labels = labels.NodeTypeForExtraPodCIDR(r.ClusterName, r.NodeName, req.Namespace, req.Name)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to find template: %w", err)
+		}
 
-		claim.Spec.Selector = tmpl.Spec.Selector
-		claim.Spec.SizeBit = tmpl.Spec.SizeBit
+		var claim controlplanev1alpha1.CIDRClaim
+		claim.Namespace = r.ControlPlaneNamespace
+		claim.Name = claimName
 
-		return nil
-	})
+		_, err = ctrl.CreateOrUpdate(ctx, r.Client, &claim, func() error {
+			claim.Labels = labels.ExtraPodCIDRTypeForNode(r.ClusterName, r.NodeName, req.Namespace, req.Name, templateName)
+			claim.Labels[labels.TemplateNameLabelKey] = templateName
 
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to upsert CIDRClaim: %w", err)
+			claim.Spec.Selector = tmpl.Spec.Selector
+			claim.Spec.SizeBit = tmpl.Spec.SizeBit
+
+			return nil
+		})
+
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to upsert CIDRClaim: %w", err)
+		}
 	}
 
 	return ctrl.Result{}, nil
 }
 
-func (r *ExtraPodCIDRSyncReconciler) claimName(namespace, name string) string {
+func (r *ExtraPodCIDRSyncReconciler) claimName(namespace, name, templateName string) string {
 	const maxRawNameLength = 53 - 9
 
 	rawName := fmt.Sprintf(
-		"%s/%s/%s/%s",
+		"%s/%s/%s/%s/%s",
 		r.ClusterName,
 		r.NodeName,
 		namespace,
 		name,
+		templateName,
 	)
 
 	if len(name) > maxRawNameLength {
@@ -134,11 +141,12 @@ func (r *ExtraPodCIDRSyncReconciler) claimName(namespace, name string) string {
 func (r *ExtraPodCIDRSyncReconciler) deleteCIDRClaim(ctx context.Context, req ctrl.Request) error {
 	err := r.DeleteAllOf(ctx, &controlplanev1alpha1.CIDRClaim{}, &client.DeleteAllOfOptions{
 		ListOptions: client.ListOptions{
-			LabelSelector: k8slabels.SelectorFromSet(labels.NodeTypeForExtraPodCIDR(
+			LabelSelector: k8slabels.SelectorFromSet(labels.ExtraPodCIDRTypeForNode(
 				r.ClusterName,
 				r.NodeName,
 				req.Namespace,
 				req.Name,
+				"",
 			)),
 			Namespace: r.ControlPlaneNamespace,
 		},
@@ -156,7 +164,7 @@ func (r *ExtraPodCIDRSyncReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	cidrClaimHandler := handler.EnqueueRequestsFromMapFunc(func(o client.Object) []reconcile.Request {
 		cidrClaim := o.(*controlplanev1alpha1.CIDRClaim)
 
-		for k, v := range labels.NodeTypeForExtraPodCIDRAll(r.ClusterName, r.NodeName) {
+		for k, v := range labels.ExtraPodCIDRTypeForNodeAll(r.ClusterName, r.NodeName, "") {
 			if cidrClaim.Labels[k] != v {
 				return nil
 			}
@@ -172,7 +180,7 @@ func (r *ExtraPodCIDRSyncReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	podHandler := handler.EnqueueRequestsFromMapFunc(func(o client.Object) []reconcile.Request {
 		pod := o.(*corev1.Pod)
 
-		if pod.Annotations[labels.AnnotationExtraPodCIDRTemplateKey] == "" {
+		if pod.Annotations[labels.AnnotationExtraPodCIDRTemplatesKey] == "" {
 			return nil
 		}
 

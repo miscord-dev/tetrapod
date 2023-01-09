@@ -12,12 +12,13 @@ import (
 	"github.com/miscord-dev/toxfu/toxfud/pkg/cniserver"
 	"github.com/miscord-dev/toxfu/toxfud/pkg/labels"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 func SetupCNId(ctx context.Context, mgr manager.Manager, config clientmiscordwinv1alpha1.CNIConfig) {
-	if config.CNID.AddressClaimTemplate == "" {
+	if len(config.CNID.AddressClaimTemplates) == 0 {
 		return
 	}
 
@@ -27,9 +28,9 @@ func SetupCNId(ctx context.Context, mgr manager.Manager, config clientmiscordwin
 		ControlPlaneNamespace: config.ControlPlane.Namespace,
 		ClusterName:           config.ClusterName,
 		NodeName:              config.NodeName,
-		TemplateName:          config.CNID.AddressClaimTemplate,
-		ClaimNameGenerator: func() string {
-			name := fmt.Sprintf("%s-%s-pod", config.ClusterName, config.NodeName)
+		TemplateNames:         config.CNID.AddressClaimTemplates,
+		ClaimNameGenerator: func(templateName string) string {
+			name := fmt.Sprintf("%s-%s-pod-%s", config.ClusterName, config.NodeName, templateName)
 
 			if len(name) < 53 {
 				return name
@@ -39,21 +40,25 @@ func SetupCNId(ctx context.Context, mgr manager.Manager, config clientmiscordwin
 
 			return name[:53-9] + "-" + hex.EncodeToString(hash[:])[:8]
 		},
-		Labels: func() map[string]string {
-			return labels.NodeTypeForPodCIDR(config.ClusterName, config.NodeName)
+		Labels: func(templateName string) map[string]string {
+			return labels.PodCIDRTypeForNode(config.ClusterName, config.NodeName, templateName)
 		},
 	}).SetupWithManager(mgr, "PodCIDRSync"); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CIDRClaimer")
 		os.Exit(1)
 	}
 
+	var localCache cache.Cache
 	if config.CNID.Extra {
+		var err error
+
 		localCluster, err := cluster.New(ctrl.GetConfigOrDie())
 
 		if err != nil {
 			setupLog.Error(err, "setting up local cluster failed")
 			os.Exit(1)
 		}
+		localCache = localCluster.GetCache()
 
 		if err := (&controllers.ExtraPodCIDRSyncReconciler{
 			Client:                mgr.GetClient(),
@@ -69,10 +74,12 @@ func SetupCNId(ctx context.Context, mgr manager.Manager, config clientmiscordwin
 	}
 
 	server, err := cniserver.NewServer(config.CNID.SocketPath, cniserver.Options{
-		Cache:                 mgr.GetCache(),
-		ControlPlaneNamespace: config.ControlPlane.Namespace,
-		ClusterName:           config.ClusterName,
-		NodeName:              config.NodeName,
+		Cache:                    mgr.GetCache(),
+		LocalCache:               localCache,
+		ControlPlaneNamespace:    config.ControlPlane.Namespace,
+		ClusterName:              config.ClusterName,
+		NodeName:                 config.NodeName,
+		PodAddressClaimTemplates: config.ControlPlane.AddressClaimTemplates,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start cni server")

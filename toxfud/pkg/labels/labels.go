@@ -1,6 +1,11 @@
 package labels
 
-import "k8s.io/apimachinery/pkg/types"
+import (
+	"strings"
+
+	"github.com/miscord-dev/toxfu/toxfud/pkg/util"
+	"k8s.io/apimachinery/pkg/types"
+)
 
 func ForNode(clusterName, nodeName string) map[string]string {
 	return map[string]string{
@@ -17,18 +22,24 @@ func NodeTypeForNode(clusterName, nodeName string) map[string]string {
 	return labels
 }
 
-func NodeTypeForPodCIDR(clusterName, nodeName string) map[string]string {
+func PodCIDRTypeForNode(clusterName, nodeName, templateName string) map[string]string {
 	labels := ForNode(clusterName, nodeName)
 
 	labels["client.miscord.win/type"] = "pod-cidr"
+	if templateName != "" {
+		labels[TemplateNameLabelKey] = templateName
+	}
 
 	return labels
 }
 
-func NodeTypeForExtraPodCIDRAll(clusterName, nodeName string) map[string]string {
+func ExtraPodCIDRTypeForNodeAll(clusterName, nodeName, templateName string) map[string]string {
 	labels := ForNode(clusterName, nodeName)
 
 	labels["client.miscord.win/type"] = "extra-pod-cidr"
+	if templateName != "" {
+		labels[TemplateNameLabelKey] = templateName
+	}
 
 	return labels
 }
@@ -38,8 +49,8 @@ const (
 	podNameKey      = "client.miscord.win/name"
 )
 
-func NodeTypeForExtraPodCIDR(clusterName, nodeName, namespace, name string) map[string]string {
-	labels := NodeTypeForExtraPodCIDRAll(clusterName, nodeName)
+func ExtraPodCIDRTypeForNode(clusterName, nodeName, namespace, name, templateName string) map[string]string {
+	labels := ExtraPodCIDRTypeForNodeAll(clusterName, nodeName, templateName)
 
 	labels[podNamespaceKey] = namespace
 	labels[podNameKey] = name
@@ -54,4 +65,16 @@ func NamespacedNameFromExtraPodCIDR(labels map[string]string) types.NamespacedNa
 	}
 }
 
-const AnnotationExtraPodCIDRTemplateKey = "toxfu.miscord.win/extra-template"
+const AnnotationExtraPodCIDRTemplatesKey = "toxfu.miscord.win/extra-templates"
+
+func ExtraPODCIDRTemplateNames(annotationValue string) []string {
+	extraTemplates := strings.Split(annotationValue, ",")
+	for i := range extraTemplates {
+		extraTemplates[i] = strings.TrimSpace(extraTemplates[i])
+	}
+	extraTemplates = util.Uniq(extraTemplates)
+
+	return extraTemplates
+}
+
+const TemplateNameLabelKey = "client.miscord.win/template-name"

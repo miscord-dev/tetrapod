@@ -37,7 +37,7 @@ type ControlPlane struct {
 	KubeConfig  string `json:"kubeconfig"`
 	Context     string `json:"context"`
 
-	AddressClaimTemplate string `json:"addressClaimTemplate"`
+	AddressClaimTemplates []string `json:"addressClaimTemplates"`
 }
 
 func loadFromEnv(v *string, key string) {
@@ -95,9 +95,9 @@ func (wg *Wireguard) LoadFromEnv() {
 }
 
 type CNIDConfig struct {
-	AddressClaimTemplate string `json:"addressClaimTemplate"`
-	Extra                bool   `json:"extra"`
-	SocketPath           string `json:"socketPath"`
+	AddressClaimTemplates []string `json:"addressClaimTemplates"`
+	Extra                 bool     `json:"extra"`
+	SocketPath            string   `json:"socketPath"`
 }
 
 func (c *CNIDConfig) LoadFromEnv() {
