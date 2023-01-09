@@ -11,7 +11,8 @@ import (
 	"github.com/miscord-dev/toxfu/toxfud/controllers"
 	"github.com/miscord-dev/toxfu/toxfud/pkg/cniserver"
 	"github.com/miscord-dev/toxfu/toxfud/pkg/labels"
-	ctrl "sigs.k8s.io/controller-runtime"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -50,9 +51,28 @@ func SetupCNId(ctx context.Context, mgr manager.Manager, config clientmiscordwin
 
 	var localCache cache.Cache
 	if config.CNID.Extra {
+		var restConfig *rest.Config
 		var err error
 
-		localCluster, err := cluster.New(ctrl.GetConfigOrDie())
+		if config.CNID.KubeConfig != "" {
+			restConfig, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+				&clientcmd.ClientConfigLoadingRules{
+					ExplicitPath: config.CNID.KubeConfig,
+				},
+				&clientcmd.ConfigOverrides{
+					CurrentContext: config.CNID.Context,
+				},
+			).ClientConfig()
+		} else {
+			restConfig, err = rest.InClusterConfig()
+		}
+
+		if err != nil {
+			setupLog.Error(err, "setting rest config for controller failed")
+			os.Exit(1)
+		}
+
+		localCluster, err := cluster.New(restConfig)
 
 		if err != nil {
 			setupLog.Error(err, "setting up local cluster failed")

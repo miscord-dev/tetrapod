@@ -67,15 +67,29 @@ func init() {
 func main() {
 	ctx := ctrl.SetupSignalHandler()
 
+	flagSet := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	flagSet.Usage = func() {
+		fmt.Fprintf(flagSet.Output(), "Usage of %s:\n", os.Args[0])
+		flagSet.PrintDefaults()
+	}
+
 	var metricsAddr string
 	var probeAddr string
-	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8090", "The address the metric endpoint binds to.")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8091", "The address the probe endpoint binds to.")
+	var kubeconfig string
+	configPath := "/etc/toxfu/toxfud.yaml"
+	if c := os.Getenv("TOXFU_DAEMON_CONFIG"); c != "" {
+		configPath = c
+	}
+
+	flagSet.StringVar(&metricsAddr, "metrics-bind-address", ":8090", "The address the metric endpoint binds to.")
+	flagSet.StringVar(&probeAddr, "health-probe-bind-address", ":8091", "The address the probe endpoint binds to.")
+	flagSet.StringVar(&kubeconfig, "kubeconfig", "", "Paths to a kubeconfig. Only required if out-of-cluster.")
+	flagSet.StringVar(&configPath, "config", configPath, "Paths to a toxfu config.")
 	opts := zap.Options{
 		Development: true,
 	}
-	opts.BindFlags(flag.CommandLine)
-	flag.Parse()
+	opts.BindFlags(flagSet)
+	flagSet.Parse(os.Args[1:])
 
 	logrLogger := zap.New(zap.UseFlagOptions(&opts))
 	zapLogger := logrLogger.GetSink().(zapr.Underlier).GetUnderlying()
@@ -103,10 +117,6 @@ func main() {
 	}
 
 	var config clientmiscordwinv1alpha1.CNIConfig
-	configPath := os.Getenv("TOXFU_DAEMON_CONFIG")
-	if configPath == "" {
-		configPath = "/etc/toxfu/toxfud.yaml"
-	}
 
 	options.AndFromOrDie(ctrl.ConfigFile().AtPath(configPath).OfKind(&config))
 	options.LeaderElection = false
@@ -173,9 +183,13 @@ func main() {
 			},
 		}
 	} else {
+		if kubeconfig == "" {
+			kubeconfig = config.ControlPlane.KubeConfig
+		}
+
 		restConfig, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 			&clientcmd.ClientConfigLoadingRules{
-				ExplicitPath: config.ControlPlane.KubeConfig,
+				ExplicitPath: kubeconfig,
 			},
 			&clientcmd.ConfigOverrides{
 				CurrentContext: config.ControlPlane.Context,

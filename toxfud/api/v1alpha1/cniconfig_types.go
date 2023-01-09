@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/miscord-dev/toxfu/toxfud/pkg/cniserver"
@@ -28,6 +29,16 @@ import (
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+
+func loadFromEnv(v *string, key string) {
+	value := os.Getenv(key)
+
+	if value == "" {
+		return
+	}
+
+	*v = value
+}
 
 type ControlPlane struct {
 	APIEndpoint string `json:"apiEndpoint"`
@@ -40,23 +51,17 @@ type ControlPlane struct {
 	AddressClaimTemplates []string `json:"addressClaimTemplates"`
 }
 
-func loadFromEnv(v *string, key string) {
-	value := os.Getenv(key)
-
-	if value == "" {
-		return
-	}
-
-	*v = value
-}
-
-func (cp *ControlPlane) LoadFromEnv() {
+func (cp *ControlPlane) LoadFromEnv(configPath string) {
 	loadFromEnv(&cp.APIEndpoint, "TOXFU_CONTROLPLANE_APIENDPOINT")
 	loadFromEnv(&cp.RootCACert, "TOXFU_CONTROLPLANE_ROOT_CA_CERT")
 	loadFromEnv(&cp.Token, "TOXFU_CONTROLPLANE_TOKEN")
 	loadFromEnv(&cp.Namespace, "TOXFU_CONTROLPLANE_NAMESPACE")
 	loadFromEnv(&cp.KubeConfig, "TOXFU_CONTROLPLANE_KUBECONFIG")
 	loadFromEnv(&cp.Context, "TOXFU_CONTROLPLANE_CONTEXT")
+
+	if !filepath.IsAbs(cp.KubeConfig) {
+		cp.KubeConfig = filepath.Join(filepath.Dir(configPath), cp.KubeConfig)
+	}
 }
 
 type Wireguard struct {
@@ -98,11 +103,17 @@ type CNIDConfig struct {
 	AddressClaimTemplates []string `json:"addressClaimTemplates"`
 	Extra                 bool     `json:"extra"`
 	SocketPath            string   `json:"socketPath"`
+	KubeConfig            string   `json:"kubeconfig"`
+	Context               string   `json:"context"`
 }
 
-func (c *CNIDConfig) LoadFromEnv() {
+func (c *CNIDConfig) LoadFromEnv(configPath string) {
 	if c.SocketPath == "" {
 		c.SocketPath = cniserver.DefaultSocketPath
+	}
+
+	if !filepath.IsAbs(c.KubeConfig) {
+		c.KubeConfig = filepath.Join(filepath.Dir(configPath), c.KubeConfig)
 	}
 }
 
@@ -121,12 +132,12 @@ type CNIConfig struct {
 	CNID                                              CNIDConfig   `json:"cnid"`
 }
 
-func (cc *CNIConfig) LoadFromEnv() {
+func (cc *CNIConfig) LoadFromEnv(configPath string) {
 	loadFromEnv(&cc.ClusterName, "TOXFU_CLUSTER_NAME")
 	loadFromEnv(&cc.NodeName, "TOXFU_NODE_NAME")
 	loadFromEnv(&cc.NetworkNamespace, "TOXFU_NETNS")
 
-	cc.ControlPlane.LoadFromEnv()
+	cc.ControlPlane.LoadFromEnv(configPath)
 	cc.Wireguard.LoadFromEnv()
-	cc.CNID.LoadFromEnv()
+	cc.CNID.LoadFromEnv(configPath)
 }
