@@ -123,7 +123,7 @@ func main() {
 	options.AndFromOrDie(ctrl.ConfigFile().AtPath(configPath).OfKind(&config))
 	options.LeaderElection = false
 
-	config.LoadFromEnv(configPath)
+	config.Load(configPath)
 	options.Namespace = config.ControlPlane.Namespace
 
 	if config.Wireguard.PrivateKey == "" {
@@ -184,32 +184,8 @@ func main() {
 				CAData: []byte(config.ControlPlane.RootCACert),
 			},
 		}
-	} else if config.ControlPlane.KubeConfigRaw != nil {
-		restConfig, err = clientcmd.BuildConfigFromKubeconfigGetter("", func() (*clientcmdapi.Config, error) {
-			var cfg clientcmdapi.Config
-
-			err := scheme.Convert(config.ControlPlane.KubeConfigRaw, &cfg, nil)
-
-			if err != nil {
-				return nil, err
-			}
-
-			return &cfg, nil
-		})
-
-		if err != nil {
-			setupLog.Error(err, "setting rest config from kubeconfigraw for controller failed")
-			os.Exit(1)
-		}
 	} else {
-		restConfig, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-			&clientcmd.ClientConfigLoadingRules{
-				ExplicitPath: config.ControlPlane.KubeConfig,
-			},
-			&clientcmd.ConfigOverrides{
-				CurrentContext: config.ControlPlane.Context,
-			},
-		).ClientConfig()
+		restConfig, err = loadRestConfigFromKubeConfig(scheme, &config.ControlPlane.KubeConfig)
 
 		if err != nil {
 			setupLog.Error(err, "setting rest config for controller failed")
@@ -297,4 +273,55 @@ func main() {
 	}
 
 	setupLog.Info("Stopping")
+}
+
+func loadRestConfigFromKubeConfig(scheme *runtime.Scheme, kc *clientmiscordwinv1alpha1.KubeConfig) (*rest.Config, error) {
+	switch {
+	case kc.Inline != nil:
+		restConfig, err := clientcmd.BuildConfigFromKubeconfigGetter("", func() (*clientcmdapi.Config, error) {
+			var cfg clientcmdapi.Config
+
+			err := scheme.Convert(kc.Inline, &cfg, nil)
+
+			if err != nil {
+				return nil, err
+			}
+
+			return &cfg, nil
+		})
+
+		if err != nil {
+			return nil, fmt.Errorf("failed get rest config from raw: %w", err)
+		}
+
+		return restConfig, nil
+
+	case kc.File == "in-cluster":
+		restConfig, err := rest.InClusterConfig()
+
+		if err != nil {
+			return nil, fmt.Errorf("failed get in-cluster rest config: %w", err)
+		}
+
+		return restConfig, nil
+
+	case kc.File != "":
+		restConfig, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+			&clientcmd.ClientConfigLoadingRules{
+				ExplicitPath: kc.File,
+			},
+			&clientcmd.ConfigOverrides{
+				CurrentContext: kc.Context,
+			},
+		).ClientConfig()
+
+		if err != nil {
+			return nil, fmt.Errorf("failed get rest config from file: %w", err)
+		}
+
+		return restConfig, nil
+
+	default:
+		return nil, fmt.Errorf("no kubeconfig is specified")
+	}
 }

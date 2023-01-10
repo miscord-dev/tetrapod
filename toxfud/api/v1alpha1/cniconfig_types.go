@@ -41,29 +41,37 @@ func loadFromEnv(v *string, key string) {
 	*v = value
 }
 
+type KubeConfig struct {
+	File    string                 `json:"file"`
+	Inline  *clientcmdapiv1.Config `json:"inline"`
+	Context string                 `json:"context"`
+}
+
+func (kc *KubeConfig) Load(configPath string) {
+	if kc.File != "" && !filepath.IsAbs(kc.File) {
+		kc.File = filepath.Join(filepath.Dir(configPath), kc.File)
+	}
+}
+
 type ControlPlane struct {
-	APIEndpoint   string                 `json:"apiEndpoint"`
-	RootCACert    string                 `json:"rootCACert"`
-	Token         string                 `json:"-"`
-	Namespace     string                 `json:"namespace"`
-	KubeConfig    string                 `json:"kubeconfig"`
-	KubeConfigRaw *clientcmdapiv1.Config `json:"kubeconfigRaw"`
-	Context       string                 `json:"context"`
+	APIEndpoint string     `json:"apiEndpoint"`
+	RootCACert  string     `json:"rootCACert"`
+	Token       string     `json:"-"`
+	Namespace   string     `json:"namespace"`
+	KubeConfig  KubeConfig `json:"kubeconfig"`
 
 	AddressClaimTemplates []string `json:"addressClaimTemplates"`
 }
 
-func (cp *ControlPlane) LoadFromEnv(configPath string) {
+func (cp *ControlPlane) Load(configPath string) {
 	loadFromEnv(&cp.APIEndpoint, "TOXFU_CONTROLPLANE_APIENDPOINT")
 	loadFromEnv(&cp.RootCACert, "TOXFU_CONTROLPLANE_ROOT_CA_CERT")
 	loadFromEnv(&cp.Token, "TOXFU_CONTROLPLANE_TOKEN")
 	loadFromEnv(&cp.Namespace, "TOXFU_CONTROLPLANE_NAMESPACE")
-	loadFromEnv(&cp.KubeConfig, "TOXFU_CONTROLPLANE_KUBECONFIG")
-	loadFromEnv(&cp.Context, "TOXFU_CONTROLPLANE_CONTEXT")
+	loadFromEnv(&cp.KubeConfig.File, "TOXFU_CONTROLPLANE_KUBECONFIG")
+	loadFromEnv(&cp.KubeConfig.Context, "TOXFU_CONTROLPLANE_CONTEXT")
 
-	if cp.KubeConfig != "" && !filepath.IsAbs(cp.KubeConfig) {
-		cp.KubeConfig = filepath.Join(filepath.Dir(configPath), cp.KubeConfig)
-	}
+	cp.KubeConfig.Load(configPath)
 }
 
 type Wireguard struct {
@@ -75,7 +83,7 @@ type Wireguard struct {
 	Table        int    `json:"table"`
 }
 
-func (wg *Wireguard) LoadFromEnv() {
+func (wg *Wireguard) Load() {
 	loadFromEnv(&wg.PrivateKey, "TOXFU_WG_PRIVATE_KEY")
 	loadFromEnv(&wg.STUNEndpoint, "TOXFU_WG_STUN_ENDPOINT")
 
@@ -102,22 +110,21 @@ func (wg *Wireguard) LoadFromEnv() {
 }
 
 type CNIDConfig struct {
-	AddressClaimTemplates []string               `json:"addressClaimTemplates"`
-	Extra                 bool                   `json:"extra"`
-	SocketPath            string                 `json:"socketPath"`
-	KubeConfig            string                 `json:"kubeconfig"`
-	KubeConfigRaw         *clientcmdapiv1.Config `json:"kubeconfigRaw"`
-	Context               string                 `json:"context"`
+	AddressClaimTemplates []string   `json:"addressClaimTemplates"`
+	Extra                 bool       `json:"extra"`
+	SocketPath            string     `json:"socketPath"`
+	KubeConfig            KubeConfig `json:"kubeconfig"`
 }
 
-func (c *CNIDConfig) LoadFromEnv(configPath string) {
+func (c *CNIDConfig) Load(configPath string) {
 	if c.SocketPath == "" {
 		c.SocketPath = cniserver.DefaultSocketPath
 	}
-
-	if c.KubeConfig != "" && !filepath.IsAbs(c.KubeConfig) {
-		c.KubeConfig = filepath.Join(filepath.Dir(configPath), c.KubeConfig)
+	if c.KubeConfig.File == "" && c.KubeConfig.Inline == nil {
+		c.KubeConfig.File = "in-cluster"
 	}
+
+	c.KubeConfig.Load(configPath)
 }
 
 //+kubebuilder:object:root=true
@@ -135,12 +142,12 @@ type CNIConfig struct {
 	CNID                                              CNIDConfig   `json:"cnid"`
 }
 
-func (cc *CNIConfig) LoadFromEnv(configPath string) {
+func (cc *CNIConfig) Load(configPath string) {
 	loadFromEnv(&cc.ClusterName, "TOXFU_CLUSTER_NAME")
 	loadFromEnv(&cc.NodeName, "TOXFU_NODE_NAME")
 	loadFromEnv(&cc.NetworkNamespace, "TOXFU_NETNS")
 
-	cc.ControlPlane.LoadFromEnv(configPath)
-	cc.Wireguard.LoadFromEnv()
-	cc.CNID.LoadFromEnv(configPath)
+	cc.ControlPlane.Load(configPath)
+	cc.Wireguard.Load()
+	cc.CNID.Load(configPath)
 }
