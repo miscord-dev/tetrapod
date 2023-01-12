@@ -83,7 +83,7 @@ func SetupCNId(ctx context.Context, mgr manager.Manager, config clientmiscordwin
 		ControlPlaneNamespace:    config.ControlPlane.Namespace,
 		ClusterName:              config.ClusterName,
 		NodeName:                 config.NodeName,
-		PodAddressClaimTemplates: config.ControlPlane.AddressClaimTemplates,
+		PodAddressClaimTemplates: config.CNID.AddressClaimTemplates,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start cni server")

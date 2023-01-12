@@ -17,7 +17,10 @@ arena:
 init:
 	aqua cp -o bin cnitool bandwidth bridge dhcp firewall host-device host-local ipvlan loopback macvlan portmap ptp sbr static tuning vlan vrf
 
-.PHONY: toxfu-pod-ipam hostvrf cni-plugins
+.PHONY: toxfu-extra-routes toxfu-pod-ipam hostvrf cni-plugins
+toxfu-extra-routes:
+	go build -o ./bin ./toxfucni/cmd/toxfu-extra-routes
+
 toxfu-pod-ipam:
 	go build -o ./bin ./toxfucni/cmd/toxfu-pod-ipam
 

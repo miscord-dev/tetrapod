@@ -63,7 +63,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 	routesSet := map[string]struct{}{}
 
 	for _, r := range routes {
-		routesSet[r.String()] = struct{}{}
+		routesSet[r.Dst.String()] = struct{}{}
 	}
 
 	for _, ip := range result.IPs {
@@ -83,7 +83,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 		})
 
 		if err != nil {
-			return fmt.Errorf("failed to add a route for %s to %s", cidr.String(), vrf.Name)
+			return fmt.Errorf("failed to add a route for %s to %s: %w", cidr.String(), vrf.Name, err)
 		}
 	}
 

@@ -138,7 +138,9 @@ func (h *Handler) GetPodCIDRs(args *GetPodCIDRsArgs, cidrClaims *controlplanev1a
 
 			templateName := claim.Labels[labels.TemplateNameLabelKey]
 
-			delete(templateNames, templateName)
+			if templateName != "" {
+				delete(templateNames, templateName)
+			}
 		}
 
 		if len(templateNames) != 0 {

@@ -12,7 +12,7 @@ import (
 type Conf struct {
 	types.NetConf
 
-	VRF string
+	VRF string `json:"vrf"`
 }
 
 func loadConfig(stdin []byte) (*Conf, *current.Result, error) {

@@ -144,6 +144,7 @@ func (r *CIDRClaimerReconciler) SetupWithManager(mgr ctrl.Manager, name string) 
 		if ok {
 			return fmt.Errorf("%s is duplicated", t)
 		}
+		templateNames[t] = struct{}{}
 
 		ch <- event.GenericEvent{
 			Object: &unstructured.Unstructured{
