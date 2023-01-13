@@ -1,16 +1,3 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  labels:
-    control-plane: controller-manager
-    app.kubernetes.io/name: namespace
-    app.kubernetes.io/instance: system
-    app.kubernetes.io/component: manager
-    app.kubernetes.io/created-by: tetrad
-    app.kubernetes.io/part-of: tetrad
-    app.kubernetes.io/managed-by: kustomize
-  name: system
----
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -58,7 +45,7 @@ spec:
       hostNetwork: true
       containers:
       - command:
-        - /manager
+        - /tetrad
         args:
         image: controller:latest
         name: manager
@@ -67,23 +54,78 @@ spec:
         livenessProbe:
           httpGet:
             path: /healthz
-            port: 8081
+            port: 8091
           initialDelaySeconds: 15
           periodSeconds: 20
         readinessProbe:
           httpGet:
             path: /readyz
-            port: 8081
+            port: 8091
           initialDelaySeconds: 5
           periodSeconds: 10
+        env:
+        - name: TETRAPOD_CLUSTER_NAME
+          value: tetra
+        - name: TETRAPOD_CONTROLPLANE_TEMPLATES
+          value: nodes
+        - name: TETRAPOD_CONTROLPLANE_APIENDPOINT
+          value: https://vpn.tsuzu.dev:6443/clusters/root
+        - name: TETRAPOD_CONTROLPLANE_ROOT_CA_CERT
+          value: |
+            -----BEGIN CERTIFICATE-----
+            MIIDITCCAgmgAwIBAgIISGHt0K+UkFAwDQYJKoZIhvcNAQELBQAwFTETMBEGA1UE
+            AxMKa3ViZXJuZXRlczAeFw0yMzAxMTAwMjQ1MDNaFw0yNDAxMTAwMjQ1MDVaMDQx
+            FzAVBgNVBAoTDnN5c3RlbTptYXN0ZXJzMRkwFwYDVQQDExBrdWJlcm5ldGVzLWFk
+            bWluMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvxa/Q8rvqS0JT/8I
+            9HDvppPxaPXYeXCV9HF1SbEjV/YxlhQp3fWglXHzN7asZr8nwGkR9qb6y4PUelCd
+            IQElqA9T9CgyKAixlX+4BD+uvO9wDDfZpY924e4EqcCid+SNg5FlXUWAV3weDPUZ
+            Wzg0BtOXX0uKWjJyOzA3MkF/sA7AOaKZdIkYSZ4pP9AIzLZaJN5Cws4WoUkTuLCd
+            XmwGfK2Y1+twFJsdGa0jKV83KzmIaVzbIigwwH40vmCsZ9mXVamEcLQpWhxzi6VL
+            /OcEJLnjbUHSQbOBi4kwj2itIFdx7RBN33wOC+8mzMeLytWs/8daTaDbHMCKJRLw
+            ojc+qQIDAQABo1YwVDAOBgNVHQ8BAf8EBAMCBaAwEwYDVR0lBAwwCgYIKwYBBQUH
+            AwIwDAYDVR0TAQH/BAIwADAfBgNVHSMEGDAWgBQvuDrVz5NgROTz5sbHVawxisw4
+            lTANBgkqhkiG9w0BAQsFAAOCAQEAdtuw24LlNGr5y+rw286QSsXJ2ZMJFSJZnPto
+            871ZWaTXLat6a5bbK/OksZlHlbqpO+LJaK0Eu/rDs7ZtOeazqo6FDIhpGQBp6svW
+            TW1llofzTEWR66yFHC0wQzRfGR9I2UAHvo2Zkr0OsJPS5HNy9x0FXcgj8exB2NPa
+            kattFtL6A3T0B7VRx2tAgzcmblIoKKZLxzrk0RjLdLaGHUAMBraGjHmyAFup5fA8
+            E2+xzLwZE4AYUjhzIWhghiQJazmL/Gq4Pc0JG5wbyJH2mr8BeOBGaL80DdlRu3nx
+            n3+Gifvl7mrHtpDvyEYFxgQJTicLy/e/7pyDBypOu2UlaSuxEw==
+            -----END CERTIFICATE-----
+        - name: TETRAPOD_CONTROLPLANE_TOKEN
+          value: a08a71cf-9329-4309-a4dd-2c9778bb4652
+        - name: TETRAPOD_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        volumeMounts:
+        - name: config
+          mountPath: /etc/tetrapod
+        - name: keys
+          mountPath: /etc/tetrapod/keys
         # TODO(user): Configure the resources accordingly based on the project requirements.
         # More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
         resources:
           limits:
-            cpu: 500m
-            memory: 256Mi
+            cpu: 1000m
+            memory: 512Mi
           requests:
-            cpu: 10m
+            cpu: 100m
             memory: 256Mi
+      volumes:
+      - name: config
+        configMap:
+          name: tetrad-config
+      - name: keys
+        emptyDir: {}
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tetrad-config
+data:
+  tetrad.yaml: |
+    # controlPlane:
+    #   addressClaimTemplates:
+    #   - nodes
