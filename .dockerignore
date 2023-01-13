@@ -1,0 +1,8 @@
+.github/
+aqua/
+bin/
+tools/
+**/linux-*
+**/xtp-tools
+**/*.tar.xz
+.git
