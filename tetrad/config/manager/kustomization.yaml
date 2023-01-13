@@ -1,2 +1,5 @@
 resources:
 - manager.yaml
+
+configMapGenerator:
+- name: tetrad-config

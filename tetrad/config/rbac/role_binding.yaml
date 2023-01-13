@@ -3,17 +3,17 @@ kind: ClusterRoleBinding
 metadata:
   labels:
     app.kubernetes.io/name: clusterrolebinding
-    app.kubernetes.io/instance: manager-rolebinding
+    app.kubernetes.io/instance: cni-daemon-rolebinding
     app.kubernetes.io/component: rbac
     app.kubernetes.io/created-by: tetrad
     app.kubernetes.io/part-of: tetrad
     app.kubernetes.io/managed-by: kustomize
-  name: manager-rolebinding
+  name: cni-daemon-rolebinding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: manager-role
+  name: cni-daemon-role
 subjects:
 - kind: ServiceAccount
-  name: controller-manager
+  name: cni-daemon
   namespace: system
