@@ -8,7 +8,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	disco "github.com/miscord-dev/toxfu/disco"
+	disco "github.com/miscord-dev/tetrapod/disco"
 )
 
 // MockDiscoPeerEndpointStatusCallback is a mock of DiscoPeerEndpointStatusCallback interface.

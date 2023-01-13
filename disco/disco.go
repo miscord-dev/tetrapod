@@ -6,9 +6,9 @@ import (
 	"net"
 	"net/netip"
 
-	"github.com/miscord-dev/toxfu/pkg/syncmap"
-	"github.com/miscord-dev/toxfu/pkg/types"
-	"github.com/miscord-dev/toxfu/pkg/wgkey"
+	"github.com/miscord-dev/tetrapod/pkg/syncmap"
+	"github.com/miscord-dev/tetrapod/pkg/types"
+	"github.com/miscord-dev/tetrapod/pkg/wgkey"
 	"go.uber.org/zap"
 )
 

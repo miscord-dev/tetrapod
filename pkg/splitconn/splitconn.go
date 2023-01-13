@@ -4,8 +4,8 @@ import (
 	"net/netip"
 	"sync"
 
-	"github.com/miscord-dev/toxfu/pkg/syncpool"
-	"github.com/miscord-dev/toxfu/pkg/types"
+	"github.com/miscord-dev/tetrapod/pkg/syncpool"
+	"github.com/miscord-dev/tetrapod/pkg/types"
 	"golang.org/x/sync/singleflight"
 )
 

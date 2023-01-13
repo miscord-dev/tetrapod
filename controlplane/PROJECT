@@ -2,7 +2,7 @@ domain: miscord.win
 layout:
 - go.kubebuilder.io/v3
 projectName: controlplane
-repo: github.com/miscord-dev/toxfu/controlplane
+repo: github.com/miscord-dev/tetrapod/controlplane
 resources:
 - api:
     crdVersion: v1
@@ -11,7 +11,7 @@ resources:
   domain: miscord.win
   group: controlplane
   kind: PeerNode
-  path: github.com/miscord-dev/toxfu/controlplane/api/v1alpha1
+  path: github.com/miscord-dev/tetrapod/controlplane/api/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
@@ -19,7 +19,7 @@ resources:
   domain: miscord.win
   group: controlplane
   kind: CIDRBlock
-  path: github.com/miscord-dev/toxfu/controlplane/api/v1alpha1
+  path: github.com/miscord-dev/tetrapod/controlplane/api/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
@@ -28,7 +28,7 @@ resources:
   domain: miscord.win
   group: controlplane
   kind: CIDRClaim
-  path: github.com/miscord-dev/toxfu/controlplane/api/v1alpha1
+  path: github.com/miscord-dev/tetrapod/controlplane/api/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
@@ -36,6 +36,6 @@ resources:
   domain: miscord.win
   group: controlplane
   kind: CIDRClaimTemplate
-  path: github.com/miscord-dev/toxfu/controlplane/api/v1alpha1
+  path: github.com/miscord-dev/tetrapod/controlplane/api/v1alpha1
   version: v1alpha1
 version: "3"

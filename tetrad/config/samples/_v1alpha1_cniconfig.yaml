@@ -1,0 +1,12 @@
+apiVersion: client.miscord.win/v1alpha1
+kind: CNIConfig
+metadata:
+  labels:
+    app.kubernetes.io/name: cniconfig
+    app.kubernetes.io/instance: cniconfig-sample
+    app.kubernetes.io/part-of: tetrad
+    app.kuberentes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: tetrad
+  name: cniconfig-sample
+spec:
+  # TODO(user): Add fields here

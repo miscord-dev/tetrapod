@@ -9,8 +9,8 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	disco "github.com/miscord-dev/toxfu/disco"
-	ticker "github.com/miscord-dev/toxfu/disco/ticker"
+	disco "github.com/miscord-dev/tetrapod/disco"
+	ticker "github.com/miscord-dev/tetrapod/disco/ticker"
 )
 
 // MockDiscoPeerEndpoint is a mock of DiscoPeerEndpoint interface.

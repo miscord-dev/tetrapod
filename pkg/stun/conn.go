@@ -3,7 +3,7 @@ package stun
 import (
 	"net/netip"
 
-	"github.com/miscord-dev/toxfu/pkg/types"
+	"github.com/miscord-dev/tetrapod/pkg/types"
 	"github.com/pion/stun"
 )
 

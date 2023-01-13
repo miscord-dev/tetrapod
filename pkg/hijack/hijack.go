@@ -6,12 +6,12 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/miscord-dev/toxfu/pkg/hijack/receiver"
-	"github.com/miscord-dev/toxfu/pkg/hijack/receiver/rawsockrecv"
-	"github.com/miscord-dev/toxfu/pkg/hijack/receiver/xdprecv"
-	"github.com/miscord-dev/toxfu/pkg/hijack/sender"
-	"github.com/miscord-dev/toxfu/pkg/hijack/sender/rawsocksend"
-	"github.com/miscord-dev/toxfu/pkg/types"
+	"github.com/miscord-dev/tetrapod/pkg/hijack/receiver"
+	"github.com/miscord-dev/tetrapod/pkg/hijack/receiver/rawsockrecv"
+	"github.com/miscord-dev/tetrapod/pkg/hijack/receiver/xdprecv"
+	"github.com/miscord-dev/tetrapod/pkg/hijack/sender"
+	"github.com/miscord-dev/tetrapod/pkg/hijack/sender/rawsocksend"
+	"github.com/miscord-dev/tetrapod/pkg/types"
 	"go.uber.org/zap"
 )
 
@@ -38,7 +38,7 @@ func NewConnWithLogger(port int, logger *zap.Logger) (res *Conn, err error) {
 		}
 	}()
 
-	if b, _ := strconv.ParseBool(os.Getenv("TOXFU_DISABLE_XDP")); b {
+	if b, _ := strconv.ParseBool(os.Getenv("TETRAPOD_DISABLE_XDP")); b {
 		recv, err := rawsockrecv.New(port)
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize rawsock receiver: %w", err)

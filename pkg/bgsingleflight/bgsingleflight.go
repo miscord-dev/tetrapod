@@ -3,7 +3,7 @@ package bgsingleflight
 import (
 	"sync/atomic"
 
-	"github.com/miscord-dev/toxfu/pkg/syncmap"
+	"github.com/miscord-dev/tetrapod/pkg/syncmap"
 )
 
 type NotifyExitFunc func(string)

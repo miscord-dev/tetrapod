@@ -9,10 +9,10 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/afpacket"
 	"github.com/google/gopacket/layers"
-	"github.com/miscord-dev/toxfu/pkg/hijack/receiver"
-	"github.com/miscord-dev/toxfu/pkg/sets"
-	"github.com/miscord-dev/toxfu/pkg/sliceutil"
-	"github.com/miscord-dev/toxfu/pkg/syncpool"
+	"github.com/miscord-dev/tetrapod/pkg/hijack/receiver"
+	"github.com/miscord-dev/tetrapod/pkg/sets"
+	"github.com/miscord-dev/tetrapod/pkg/sliceutil"
+	"github.com/miscord-dev/tetrapod/pkg/syncpool"
 	"golang.org/x/net/bpf"
 )
 
