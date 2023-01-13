@@ -1,0 +1,59 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - controlplane.miscord.win
+  resources:
+  - cidrclaims
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - controlplane.miscord.win
+  resources:
+  - cidrclaims/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - controlplane.miscord.win
+  resources:
+  - cidrclaims/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - controlplane.miscord.win
+  resources:
+  - peernodes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - controlplane.miscord.win
+  resources:
+  - peernodes/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - controlplane.miscord.win
+  resources:
+  - peernodes/status
+  verbs:
+  - get
+  - patch
+  - update

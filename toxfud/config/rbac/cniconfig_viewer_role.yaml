@@ -1,0 +1,27 @@
+# permissions for end users to view cniconfigs.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: cniconfig-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: toxfud
+    app.kubernetes.io/part-of: toxfud
+    app.kubernetes.io/managed-by: kustomize
+  name: cniconfig-viewer-role
+rules:
+- apiGroups:
+  - client.miscord.win
+  resources:
+  - cniconfigs
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - client.miscord.win
+  resources:
+  - cniconfigs/status
+  verbs:
+  - get

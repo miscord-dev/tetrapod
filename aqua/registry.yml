@@ -13,3 +13,46 @@ packages:
     amd64: x86_64
     arm64: aarch_64
     darwin: osx
+- type: github_release
+  name: cni-plugins
+  repo_owner: containernetworking
+  repo_name: plugins
+  asset: 'cni-plugins-{{.OS}}-{{.Arch}}-{{.Version}}.tgz'
+  link: https://github.com/containernetworking/plugins/releases/
+  description: Some reference and example networking plugins, maintained by the CNI team.
+  files:
+  - name: bandwidth
+    src: bandwidth
+  - name: bridge
+    src: bridge
+  - name: dhcp
+    src: dhcp
+  - name: firewall
+    src: firewall
+  - name: host-device
+    src: host-device
+  - name: host-local
+    src: host-local
+  - name: ipvlan
+    src: ipvlan
+  - name: loopback
+    src: loopback
+  - name: macvlan
+    src: macvlan
+  - name: portmap
+    src: portmap
+  - name: ptp
+    src: ptp
+  - name: sbr
+    src: sbr
+  - name: static
+    src: static
+  - name: tuning
+    src: tuning
+  - name: vlan
+    src: vlan
+  - name: vrf
+    src: vrf
+- type: go_install
+  path: github.com/containernetworking/cni/cnitool
+  description: cnitool is a simple program that executes a CNI configuration. It will add or remove an interface in an already-created network namespace.

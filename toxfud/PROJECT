@@ -1,0 +1,30 @@
+domain: client.miscord.win
+layout:
+- go.kubebuilder.io/v3
+projectName: toxfud
+repo: github.com/miscord-dev/toxfu/toxfud
+resources:
+- controller: true
+  domain: client.miscord.win
+  kind: CIDRClaimer
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: client.miscord.win
+  kind: CNIConfig
+  path: github.com/miscord-dev/toxfu/toxfud/api/v1alpha1
+  version: v1alpha1
+- controller: true
+  domain: client.miscord.win
+  kind: PeerNodeSync
+  version: v1alpha1
+- controller: true
+  domain: client.miscord.win
+  kind: PeersSync
+  version: v1alpha1
+- controller: true
+  domain: client.miscord.win
+  kind: ExtraPodCIDRSync
+  version: v1alpha1
+version: "3"

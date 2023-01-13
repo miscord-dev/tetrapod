@@ -1,0 +1,31 @@
+# permissions for end users to edit peernodes.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: peernode-editor-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: controlplane
+    app.kubernetes.io/part-of: controlplane
+    app.kubernetes.io/managed-by: kustomize
+  name: peernode-editor-role
+rules:
+- apiGroups:
+  - controlplane.miscord.win
+  resources:
+  - peernodes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - controlplane.miscord.win
+  resources:
+  - peernodes/status
+  verbs:
+  - get

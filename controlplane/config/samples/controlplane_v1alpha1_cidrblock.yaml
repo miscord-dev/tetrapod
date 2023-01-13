@@ -1,0 +1,12 @@
+apiVersion: controlplane.miscord.win/v1alpha1
+kind: CIDRBlock
+metadata:
+  labels:
+    app.kubernetes.io/name: cidrblock
+    app.kubernetes.io/instance: cidrblock-sample
+    app.kubernetes.io/part-of: controlplane
+    app.kuberentes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: controlplane
+  name: cidrblock-sample
+spec:
+  # TODO(user): Add fields here
