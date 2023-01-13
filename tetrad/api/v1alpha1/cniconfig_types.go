@@ -21,8 +21,10 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/miscord-dev/tetrapod/tetrad/pkg/cniserver"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientcmdapiv1 "k8s.io/client-go/tools/clientcmd/api/v1"
 	configv1alpha1 "sigs.k8s.io/controller-runtime/pkg/config/v1alpha1"
@@ -41,6 +43,18 @@ func loadFromEnv(v *string, key string) {
 	*v = value
 }
 
+func loadFromEnvArray(v *[]string, key string) {
+	value := os.Getenv(key)
+
+	if value == "" {
+		return
+	}
+
+	for _, elm := range strings.Split(value, ",") {
+		*v = append(*v, strings.TrimSpace(elm))
+	}
+}
+
 type KubeConfig struct {
 	File    string                 `json:"file"`
 	Inline  *clientcmdapiv1.Config `json:"inline"`
@@ -56,7 +70,7 @@ func (kc *KubeConfig) Load(configPath string) {
 type ControlPlane struct {
 	APIEndpoint string     `json:"apiEndpoint"`
 	RootCACert  string     `json:"rootCACert"`
-	Token       string     `json:"-"`
+	Token       string     `json:"token"`
 	Namespace   string     `json:"namespace"`
 	KubeConfig  KubeConfig `json:"kubeconfig"`
 
@@ -70,6 +84,11 @@ func (cp *ControlPlane) Load(configPath string) {
 	loadFromEnv(&cp.Namespace, "TETRAPOD_CONTROLPLANE_NAMESPACE")
 	loadFromEnv(&cp.KubeConfig.File, "TETRAPOD_CONTROLPLANE_KUBECONFIG")
 	loadFromEnv(&cp.KubeConfig.Context, "TETRAPOD_CONTROLPLANE_CONTEXT")
+	loadFromEnvArray(&cp.AddressClaimTemplates, "TETRAPOD_CONTROLPLANE_TEMPLATES")
+
+	if cp.Namespace == "" {
+		cp.Namespace = "default"
+	}
 
 	cp.KubeConfig.Load(configPath)
 }
@@ -98,6 +117,17 @@ func (wg *Wireguard) Load() {
 		}
 	}
 
+	if wg.ListenPort == 0 {
+		wg.ListenPort = 54321
+	}
+	if wg.PrivateKey == "" {
+		wg.loadPrivateKeyFromDisk()
+	}
+
+	if wg.STUNEndpoint == "" {
+		wg.STUNEndpoint = "stun.l.google.com:19302"
+	}
+
 	if wg.Name == "" {
 		wg.Name = "tetrapod0"
 	}
@@ -107,6 +137,26 @@ func (wg *Wireguard) Load() {
 	if wg.Table == 0 {
 		wg.Table = 1351
 	}
+}
+
+func (wg *Wireguard) loadPrivateKeyFromDisk() {
+	dir := "/etc/tetrapod/keys"
+	keyFile := filepath.Join(dir, "private_key")
+
+	if b, _ := os.ReadFile(keyFile); len(b) != 0 {
+		wg.PrivateKey = strings.TrimSpace(string(b))
+	}
+
+	key, err := wgtypes.GeneratePrivateKey()
+
+	if err != nil {
+		panic(err)
+	}
+
+	wg.PrivateKey = key.String()
+
+	os.MkdirAll(dir, 0700)
+	os.WriteFile(keyFile, []byte(key.String()), 0700)
 }
 
 type CNIDConfig struct {
