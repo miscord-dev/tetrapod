@@ -13,7 +13,7 @@ import (
 	"github.com/cilium/ebpf/ringbuf"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
-	"github.com/miscord-dev/toxfu/pkg/syncpool"
+	"github.com/miscord-dev/tetrapod/pkg/syncpool"
 	"github.com/vishvananda/netlink"
 )
 

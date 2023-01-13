@@ -11,7 +11,7 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/routing"
-	"github.com/miscord-dev/toxfu/pkg/hijack/sender"
+	"github.com/miscord-dev/tetrapod/pkg/hijack/sender"
 	"go.uber.org/zap"
 )
 

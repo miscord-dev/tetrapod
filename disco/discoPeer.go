@@ -7,10 +7,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/miscord-dev/toxfu/disco/ticker"
-	"github.com/miscord-dev/toxfu/pkg/sets"
-	"github.com/miscord-dev/toxfu/pkg/syncmap"
-	"github.com/miscord-dev/toxfu/pkg/wgkey"
+	"github.com/miscord-dev/tetrapod/disco/ticker"
+	"github.com/miscord-dev/tetrapod/pkg/sets"
+	"github.com/miscord-dev/tetrapod/pkg/syncmap"
+	"github.com/miscord-dev/tetrapod/pkg/wgkey"
 	"go.uber.org/zap"
 )
 

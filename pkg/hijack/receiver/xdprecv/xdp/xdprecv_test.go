@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/miscord-dev/toxfu/pkg/sets"
-	"github.com/miscord-dev/toxfu/pkg/sliceutil"
+	"github.com/miscord-dev/tetrapod/pkg/sets"
+	"github.com/miscord-dev/tetrapod/pkg/sliceutil"
 	"github.com/pion/stun"
 )
 

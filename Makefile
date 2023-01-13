@@ -6,28 +6,28 @@ LOCALBIN ?= $(shell pwd)/bin
 $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
 
-deploy: toxfu toxfuarm toxfusaba
-	rsync -avh ./bin/toxfuarm ubuntu@192.168.1.22:/tmp/
-	rsync -avh ./bin/toxfu ubuntu@10.28.100.113:/tmp/
+deploy: tetrapod tetrapodarm tetrapodsaba
+	rsync -avh ./bin/tetrapodarm ubuntu@192.168.1.22:/tmp/
+	rsync -avh ./bin/tetrapod ubuntu@10.28.100.113:/tmp/
 
 arena:
-	rsync -avh ./toxfud/bin/manager ubuntu@160.248.79.94:/home/ubuntu/
+	rsync -avh ./tetrad/bin/manager ubuntu@160.248.79.94:/home/ubuntu/
 
 .PHONY: init
 init:
 	aqua cp -o bin cnitool bandwidth bridge dhcp firewall host-device host-local ipvlan loopback macvlan portmap ptp sbr static tuning vlan vrf
 
-.PHONY: toxfu-extra-routes toxfu-pod-ipam hostvrf cni-plugins
-toxfu-extra-routes:
-	go build -o ./bin ./toxfucni/cmd/toxfu-extra-routes
+.PHONY: tetrapod-extra-routes tetrapod-pod-ipam hostvrf cni-plugins
+tetrapod-extra-routes:
+	go build -o ./bin ./tetracni/cmd/tetrapod-extra-routes
 
-toxfu-pod-ipam:
-	go build -o ./bin ./toxfucni/cmd/toxfu-pod-ipam
+tetrapod-pod-ipam:
+	go build -o ./bin ./tetracni/cmd/tetrapod-pod-ipam
 
 hostvrf:
-	go build -o ./bin ./toxfucni/cmd/hostvrf
+	go build -o ./bin ./tetracni/cmd/hostvrf
 
-cni-plugins: toxfu-pod-ipam hostvrf
+cni-plugins: tetrapod-pod-ipam hostvrf
 
 .PHONY: test
 test: envtest ## Run tests.

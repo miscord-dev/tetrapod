@@ -6,9 +6,9 @@ import (
 	"net/netip"
 	"sync/atomic"
 
-	"github.com/miscord-dev/toxfu/pkg/splitconn"
-	"github.com/miscord-dev/toxfu/pkg/stun"
-	"github.com/miscord-dev/toxfu/pkg/types"
+	"github.com/miscord-dev/tetrapod/pkg/splitconn"
+	"github.com/miscord-dev/tetrapod/pkg/stun"
+	"github.com/miscord-dev/tetrapod/pkg/types"
 	"go.uber.org/zap"
 )
 

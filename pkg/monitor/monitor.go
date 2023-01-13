@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/mdlayher/netlink"
-	"github.com/miscord-dev/toxfu/pkg/alarm"
+	"github.com/miscord-dev/tetrapod/pkg/alarm"
 	"go.uber.org/zap"
 	"golang.org/x/sys/unix"
 )

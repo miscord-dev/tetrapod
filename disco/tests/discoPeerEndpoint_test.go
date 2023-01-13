@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/miscord-dev/toxfu/disco"
-	mock_disco "github.com/miscord-dev/toxfu/disco/mock"
-	"github.com/miscord-dev/toxfu/disco/ticker"
-	"github.com/miscord-dev/toxfu/pkg/testutil"
-	"github.com/miscord-dev/toxfu/pkg/wgkey"
+	"github.com/miscord-dev/tetrapod/disco"
+	mock_disco "github.com/miscord-dev/tetrapod/disco/mock"
+	"github.com/miscord-dev/tetrapod/disco/ticker"
+	"github.com/miscord-dev/tetrapod/pkg/testutil"
+	"github.com/miscord-dev/tetrapod/pkg/wgkey"
 	"go.uber.org/atomic"
 	"go.uber.org/zap/zaptest"
 

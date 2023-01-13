@@ -31,8 +31,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	controlplanev1alpha1 "github.com/miscord-dev/toxfu/controlplane/api/v1alpha1"
-	"github.com/miscord-dev/toxfu/controlplane/controllers"
+	controlplanev1alpha1 "github.com/miscord-dev/tetrapod/controlplane/api/v1alpha1"
+	"github.com/miscord-dev/tetrapod/controlplane/controllers"
 	//+kubebuilder:scaffold:imports
 )
 

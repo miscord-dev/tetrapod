@@ -3,7 +3,7 @@ package pktmgr
 import (
 	"time"
 
-	"github.com/miscord-dev/toxfu/pkg/syncmap"
+	"github.com/miscord-dev/tetrapod/pkg/syncmap"
 )
 
 // Manager is a utility to manage rtt/dropped packets.

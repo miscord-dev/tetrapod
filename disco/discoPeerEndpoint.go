@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/miscord-dev/toxfu/disco/pktmgr"
-	"github.com/miscord-dev/toxfu/disco/ticker"
-	"github.com/miscord-dev/toxfu/pkg/wgkey"
+	"github.com/miscord-dev/tetrapod/disco/pktmgr"
+	"github.com/miscord-dev/tetrapod/disco/ticker"
+	"github.com/miscord-dev/tetrapod/pkg/wgkey"
 	"go.uber.org/zap"
 )
 

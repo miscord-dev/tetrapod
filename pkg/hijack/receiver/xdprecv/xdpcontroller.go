@@ -10,12 +10,12 @@ import (
 	"sync"
 
 	"github.com/cilium/ebpf/ringbuf"
-	"github.com/miscord-dev/toxfu/pkg/alarm"
-	"github.com/miscord-dev/toxfu/pkg/bgsingleflight"
-	"github.com/miscord-dev/toxfu/pkg/hijack/receiver/xdprecv/xdp"
-	"github.com/miscord-dev/toxfu/pkg/sets"
-	"github.com/miscord-dev/toxfu/pkg/sliceutil"
-	"github.com/miscord-dev/toxfu/pkg/syncpool"
+	"github.com/miscord-dev/tetrapod/pkg/alarm"
+	"github.com/miscord-dev/tetrapod/pkg/bgsingleflight"
+	"github.com/miscord-dev/tetrapod/pkg/hijack/receiver/xdprecv/xdp"
+	"github.com/miscord-dev/tetrapod/pkg/sets"
+	"github.com/miscord-dev/tetrapod/pkg/sliceutil"
+	"github.com/miscord-dev/tetrapod/pkg/syncpool"
 	"go.uber.org/zap"
 )
 

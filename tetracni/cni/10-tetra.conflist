@@ -1,0 +1,19 @@
+{
+  "cniVersion": "1.0.0",
+  "name": "tetrapod",
+  "plugins": [
+    {
+      "type": "bridge",
+      "bridge": "cni0",
+      "isDefaultGateway": true,
+      "ipam": {
+        "type": "tetrapod-pod-ipam",
+        "ipamPlugin": "host-local"
+      }
+    },
+    {
+      "type": "hostvrf",
+      "vrf": "tetrapod-vrf"
+    }
+  ]
+}

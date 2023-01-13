@@ -7,7 +7,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-cmp/cmp"
-	mock_types "github.com/miscord-dev/toxfu/pkg/types/mock"
+	mock_types "github.com/miscord-dev/tetrapod/pkg/types/mock"
 )
 
 func TestSplitConn(t *testing.T) {

@@ -12,7 +12,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	controlplanev1alpha1 "github.com/miscord-dev/toxfu/controlplane/api/v1alpha1"
+	controlplanev1alpha1 "github.com/miscord-dev/tetrapod/controlplane/api/v1alpha1"
 )
 
 var _ = Describe("CIDRClaim", func() {

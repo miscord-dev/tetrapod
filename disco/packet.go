@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"net/netip"
 
-	"github.com/miscord-dev/toxfu/pkg/wgkey"
+	"github.com/miscord-dev/tetrapod/pkg/wgkey"
 	"golang.org/x/exp/slices"
 )
 

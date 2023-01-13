@@ -4,7 +4,7 @@ import (
 	"io"
 	"sync/atomic"
 
-	"github.com/miscord-dev/toxfu/pkg/syncmap"
+	"github.com/miscord-dev/tetrapod/pkg/syncmap"
 )
 
 type Alarm struct {

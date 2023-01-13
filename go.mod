@@ -1,4 +1,4 @@
-module github.com/miscord-dev/toxfu
+module github.com/miscord-dev/tetrapod
 
 go 1.18
 
