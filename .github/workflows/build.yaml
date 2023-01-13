@@ -41,5 +41,6 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           context: .
+          file: ${{ matrix.component }}.Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
