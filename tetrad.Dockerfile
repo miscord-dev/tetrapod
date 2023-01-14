@@ -24,6 +24,7 @@ FROM gomod AS builder
 # the docker BUILDPLATFORM arg will be linux/arm64 when for Apple x86 it will be linux/amd64. Therefore,
 # by leaving it empty we can ensure that the container and binary shipped on it will have the same platform.
 RUN go build -a -o tetrad ./tetrad
+RUN go build -a -o tetrad-entrypoint ./tetrad/cmd/tetrad-entrypoint
 
 FROM gomod AS tetracni
 
@@ -49,8 +50,10 @@ RUN go install github.com/aquaproj/aqua/cmd/aqua@latest && \
 FROM debian:bullseye
 
 WORKDIR /
+COPY tetracni/cni /config
+COPY --from=builder /workspace/tetrad-entrypoint .
 COPY --from=builder /workspace/tetrad .
 COPY --from=tetracni /workspace/bin/* /plugins/
 COPY --from=plugins /plugins/* /plugins/
 
-ENTRYPOINT ["/tetrad"]
+ENTRYPOINT ["/tetrad-entrypoint", "/tetrad"]
