@@ -61,14 +61,14 @@ func (s *STUN) run() {
 			logger := s.logger.With(zap.String("transaction_id", hex.EncodeToString(message.TransactionID[:])))
 
 			if res.Error != nil {
-				logger.Error("stun failed", zap.Error(res.Error))
+				logger.Debug("stun failed", zap.Error(res.Error))
 
 				return
 			}
 			// Decoding XOR-MAPPED-ADDRESS attribute from message.
 			var xorAddr stun.XORMappedAddress
 			if err := xorAddr.GetFrom(res.Message); err != nil {
-				logger.Error("getting address failed", zap.Error(res.Error))
+				logger.Debug("getting address failed", zap.Error(err))
 
 				return
 			}

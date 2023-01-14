@@ -110,13 +110,6 @@ func (e *tetraEngine) endpointsCallback(addrPorts []netip.AddrPort) {
 }
 
 func (e *tetraEngine) notify() {
-	var endpoints []string
-	if ap := e.endpoints.Load(); ap != nil {
-		for _, e := range *ap {
-			endpoints = append(endpoints, e.String())
-		}
-	}
-
 	cfg := e.currentConfig.Load()
 
 	privKey, err := wgtypes.ParseKey(cfg.PrivateKey)
@@ -127,12 +120,26 @@ func (e *tetraEngine) notify() {
 	}
 
 	addresses := make([]string, 0, len(cfg.Addresses))
+	addressSets := map[string]struct{}{}
 	allowedIPs := make([]string, 0, len(cfg.Addresses))
 	for _, a := range cfg.Addresses {
 		addresses = append(addresses, a.String())
+		addressSets[a.IP.String()] = struct{}{}
 
 		addr, _ := netip.AddrFromSlice(a.IP)
 		allowedIPs = append(allowedIPs, toAddrPrefix(addr).String())
+	}
+
+	var endpoints []string
+	if ap := e.endpoints.Load(); ap != nil {
+		for _, e := range *ap {
+			_, ok := addressSets[e.Addr().String()]
+			if ok {
+				continue
+			}
+
+			endpoints = append(endpoints, e.String())
+		}
 	}
 
 	peerConfig := PeerConfig{
@@ -222,7 +229,7 @@ func (e *tetraEngine) reconfig() error {
 
 	discoStatuses := e.disco.GetAllStatuses()
 
-	e.logger.Info("disco status", zap.Any("disco", convertDiscoStatusesForJSON(discoStatuses)))
+	e.logger.Debug("disco status", zap.Any("disco", convertDiscoStatusesForJSON(discoStatuses)))
 
 	getDiscoStatus := func(pubKey string) (disco.DiscoPeerStatusReadOnly, bool) {
 		discoPubKey, err := wgkey.Parse(pubKey)
