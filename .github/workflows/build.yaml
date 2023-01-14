@@ -36,6 +36,12 @@ jobs:
         uses: docker/metadata-action@v4
         with:
           images: ghcr.io/${{ github.repository_owner }}/tetrapod-${{ matrix.component }}
+          tags: |
+            type=schedule
+            type=ref,event=branch
+            type=ref,event=tag
+            type=ref,event=pr
+            type=sha
       -
         name: Build and push
         uses: docker/build-push-action@v3
