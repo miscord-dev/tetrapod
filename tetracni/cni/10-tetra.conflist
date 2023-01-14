@@ -7,13 +7,13 @@
       "bridge": "cni0",
       "isDefaultGateway": true,
       "ipam": {
-        "type": "tetrapod-pod-ipam",
+        "type": "tetra-pod-ipam",
         "ipamPlugin": "host-local"
       }
     },
     {
       "type": "hostvrf",
-      "vrf": "tetrapod-vrf"
+      "vrf": "tetra-vrf"
     }
   ]
 }

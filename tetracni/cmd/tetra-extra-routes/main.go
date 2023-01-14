@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	skel.PluginMain(cmdAdd, cmdCheck, cmdDel, version.All, bv.BuildString("tetrapod-extra-routes"))
+	skel.PluginMain(cmdAdd, cmdCheck, cmdDel, version.All, bv.BuildString("tetra-extra-routes"))
 }
 
 func cmdAdd(args *skel.CmdArgs) error {

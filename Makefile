@@ -17,17 +17,21 @@ arena:
 init:
 	aqua cp -o bin cnitool bandwidth bridge dhcp firewall host-device host-local ipvlan loopback macvlan portmap ptp sbr static tuning vlan vrf
 
-.PHONY: tetrapod-extra-routes tetrapod-pod-ipam hostvrf cni-plugins
-tetrapod-extra-routes:
-	go build -o ./bin ./tetracni/cmd/tetrapod-extra-routes
+.PHONY: tetra-extra-routes tetra-pod-ipam hostvrf cni-plugins
 
-tetrapod-pod-ipam:
-	go build -o ./bin ./tetracni/cmd/tetrapod-pod-ipam
+bin:
+	mkdir -p bin
 
-hostvrf:
-	go build -o ./bin ./tetracni/cmd/hostvrf
+tetra-extra-routes: bin
+	CGO_ENABLED=0 go build -o ./bin ./tetracni/cmd/tetra-extra-routes
 
-cni-plugins: tetrapod-pod-ipam hostvrf
+tetra-pod-ipam: bin
+	CGO_ENABLED=0 go build -o ./bin ./tetracni/cmd/tetra-pod-ipam
+
+hostvrf: bin
+	CGO_ENABLED=0 go build -o ./bin ./tetracni/cmd/hostvrf
+
+cni-plugins: tetra-extra-routes tetra-pod-ipam hostvrf
 
 .PHONY: test
 test: envtest ## Run tests.

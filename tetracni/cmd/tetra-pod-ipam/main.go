@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	skel.PluginMain(cmdAny, cmdAny, cmdAny, version.All, bv.BuildString("tetrapod-pod-ipam"))
+	skel.PluginMain(cmdAny, cmdAny, cmdAny, version.All, bv.BuildString("tetra-pod-ipam"))
 }
 
 func cmdAny(args *skel.CmdArgs) error {
