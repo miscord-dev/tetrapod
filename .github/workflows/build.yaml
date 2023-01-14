@@ -1,3 +1,5 @@
+name: Build images
+
 on:
   push:
     branches: [main]

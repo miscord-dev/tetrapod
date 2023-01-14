@@ -47,10 +47,8 @@ spec:
       - operator: Exists
         effect: NoSchedule
       containers:
-      - command:
-        - /tetrad
+      - args:
         - -zap-log-level=info
-        args:
         image: controller:latest
         name: manager
         securityContext:
@@ -79,6 +77,12 @@ spec:
           mountPath: /etc/tetrapod
         - name: keys
           mountPath: /etc/tetrapod/keys
+        - name: socket
+          mountPath: /run/tetrapod
+        - name: cni-config
+          mountPath: /etc/cnid/net.d
+        - name: cni-bin
+          mountPath: /opt/cni/bin
         # TODO(user): Configure the resources accordingly based on the project requirements.
         # More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
         resources:
@@ -94,5 +98,17 @@ spec:
           name: tetrad-config
       - name: keys
         emptyDir: {}
+      - name: socket
+        hostPath:
+          path: /run/tetrapod
+          type: DirectoryOrCreate
+      - name: cni-config
+        hostPath:
+          path: /etc/cni/net.d
+          type: Directory
+      - name: cni-bin
+        hostPath:
+          path: /opt/cni/bin
+          type: Directory
       serviceAccountName: cni-daemon
       terminationGracePeriodSeconds: 10
