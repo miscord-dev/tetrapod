@@ -23,8 +23,9 @@ FROM gomod AS builder
 # was called. For example, if we call make docker-build in a local env which has the Apple Silicon M1 SO
 # the docker BUILDPLATFORM arg will be linux/arm64 when for Apple x86 it will be linux/amd64. Therefore,
 # by leaving it empty we can ensure that the container and binary shipped on it will have the same platform.
-RUN go build -a -o tetrad ./tetrad
-RUN go build -a -o tetrad-entrypoint ./tetrad/cmd/tetrad-entrypoint
+RUN mkdir -p bin && \
+    go build -a -o ./bin/tetrad ./tetrad && \
+    go build -a -o ./bin/tetrad-entrypoint ./tetrad/cmd/tetrad-entrypoint
 
 FROM gomod AS tetracni
 
@@ -40,19 +41,19 @@ WORKDIR /workspace
 COPY aqua.yaml aqua.yaml
 COPY aqua/ aqua/
 
-RUN go install github.com/aquaproj/aqua/cmd/aqua@latest && \
+RUN wget https://github.com/aquaproj/aqua/releases/latest/download/aqua_linux_$(go env GOARCH).tar.gz && \
+    tar xf aqua_linux_*.tar.gz -C /bin/ && \
     mkdir -p /plugins && \
     aqua i && \
-    cp $(dirname $(aqua which host-local))/* /plugins/
+    cp $(aqua which bridge) /plugins/ && \
+    cp $(aqua which host-local) /plugins/
 
-# Use distroless as minimal base image to package the manager binary
-# Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM debian:bullseye
 
 WORKDIR /
 COPY tetracni/cni /config
-COPY --from=builder /workspace/tetrad-entrypoint .
-COPY --from=builder /workspace/tetrad .
+COPY --from=builder /workspace/bin/tetrad-entrypoint .
+COPY --from=builder /workspace/bin/tetrad .
 COPY --from=tetracni /workspace/bin/* /plugins/
 COPY --from=plugins /plugins/* /plugins/
 
