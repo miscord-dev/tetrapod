@@ -40,10 +40,12 @@ WORKDIR /workspace
 COPY aqua.yaml aqua.yaml
 COPY aqua/ aqua/
 
-RUN go install github.com/aquaproj/aqua/cmd/aqua@latest && \
+RUN wget https://github.com/aquaproj/aqua/releases/latest/download/aqua_linux_$(go env GOARCH).tar.gz && \
+    tar xf aqua_linux_*.tar.gz -C /bin/ && \
     mkdir -p /plugins && \
     aqua i && \
-    cp $(dirname $(aqua which host-local))/* /plugins/
+    cp $(aqua which bridge) /plugins/ && \
+    cp $(aqua which host-local) /plugins/
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
