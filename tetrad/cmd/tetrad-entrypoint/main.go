@@ -59,7 +59,7 @@ func copyPlugins() error {
 
 func copyConf() error {
 	src := loadEnv("CONFIG_DIR_SRC", "/config")
-	dst := loadEnv("CONFIG_DIR_DST", "/etc/cni/net.d")
+	dst := loadEnv("CONFIG_DIR_DST", "/etc/cni/net.d/")
 
 	if err := copyFiles(src, dst); err != nil {
 		return fmt.Errorf("failed to copy from %s to %s: %w", src, dst, err)
