@@ -43,6 +43,9 @@ spec:
       #             values:
       #               - linux
       hostNetwork: true
+      tolerations:
+      - operator: Exists
+        effect: NoSchedule
       containers:
       - command:
         - /tetrad
