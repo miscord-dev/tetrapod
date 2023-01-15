@@ -62,6 +62,8 @@ func SetupCNId(ctx context.Context, mgr manager.Manager, config clientmiscordwin
 			setupLog.Error(err, "setting up local cluster failed")
 			os.Exit(1)
 		}
+		go localCluster.Start(ctx)
+
 		localCache = localCluster.GetCache()
 
 		if err := (&controllers.ExtraPodCIDRSyncReconciler{
