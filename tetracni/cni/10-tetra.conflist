@@ -13,7 +13,7 @@
     },
     {
       "type": "hostvrf",
-      "vrf": "tetra-vrf"
+      "vrf": "tetrapod-vrf"
     }
   ]
 }
