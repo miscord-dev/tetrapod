@@ -41,6 +41,7 @@ func NewServer(socketPath string, opt Options) (Server, error) {
 	if err := os.MkdirAll(filepath.Dir(socketPath), 0700); err != nil {
 		return nil, fmt.Errorf("failed to mkdirall %s: %w", socketPath, err)
 	}
+	_ = os.Remove(socketPath)
 
 	l, err := net.Listen("unix", socketPath)
 
