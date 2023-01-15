@@ -62,7 +62,7 @@ type KubeConfig struct {
 }
 
 func (kc *KubeConfig) Load(configPath string) {
-	if kc.File != "" && !filepath.IsAbs(kc.File) {
+	if kc.File != "" && kc.File != "in-cluster" && !filepath.IsAbs(kc.File) {
 		kc.File = filepath.Join(filepath.Dir(configPath), kc.File)
 	}
 }
