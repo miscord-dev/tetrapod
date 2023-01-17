@@ -31,7 +31,10 @@ tetra-pod-ipam: bin
 hostvrf: bin
 	CGO_ENABLED=0 go build -o ./bin ./tetracni/cmd/hostvrf
 
-cni-plugins: tetra-extra-routes tetra-pod-ipam hostvrf
+route-pods: bin
+	CGO_ENABLED=0 go build -o ./bin ./tetracni/cmd/route-pods
+
+cni-plugins: tetra-extra-routes tetra-pod-ipam hostvrf route-pods
 
 .PHONY: test
 test: envtest ## Run tests.

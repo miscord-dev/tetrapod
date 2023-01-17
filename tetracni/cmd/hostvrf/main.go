@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"net"
 
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
@@ -54,59 +53,14 @@ func cmdAdd(args *skel.CmdArgs) error {
 		}
 	}
 
-	routes, err := netlink.RouteList(vrf, netlink.FAMILY_ALL)
-
-	if err != nil {
-		return fmt.Errorf("failed to list routes for vrf: %w", err)
-	}
-
-	routesSet := map[string]struct{}{}
-
-	for _, r := range routes {
-		routesSet[r.Dst.String()] = struct{}{}
-	}
-
-	for _, ip := range result.IPs {
-		cidr := net.IPNet{
-			IP:   ip.Address.IP.Mask(ip.Address.Mask),
-			Mask: ip.Address.Mask,
-		}
-
-		_, ok := routesSet[cidr.String()]
-		if ok {
-			continue
-		}
-
-		err := netlink.RouteAdd(&netlink.Route{
-			Dst:       &cidr,
-			LinkIndex: vrf.Index,
-		})
-
-		if err != nil {
-			return fmt.Errorf("failed to add a route for %s to %s: %w", cidr.String(), vrf.Name, err)
-		}
-	}
-
 	return types.PrintResult(conf.PrevResult, conf.CNIVersion)
 }
 
 func cmdCheck(args *skel.CmdArgs) error {
-	conf, result, err := loadConfig(args.StdinData)
+	_, result, err := loadConfig(args.StdinData)
 
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
-	}
-
-	link, err := netlink.LinkByName(conf.VRF)
-
-	if err != nil {
-		return fmt.Errorf("failed to find a VRF: %w", err)
-	}
-
-	vrf, ok := link.(*netlink.Vrf)
-
-	if !ok {
-		return fmt.Errorf("%s is not VRF", conf.VRF)
 	}
 
 	for _, iface := range result.Interfaces {
@@ -122,30 +76,6 @@ func cmdCheck(args *skel.CmdArgs) error {
 
 		if link.Attrs().MasterIndex == 0 {
 			return fmt.Errorf("master of %s is not set", link.Attrs().Name)
-		}
-	}
-
-	routes, err := netlink.RouteList(vrf, netlink.FAMILY_ALL)
-
-	if err != nil {
-		return fmt.Errorf("failed to list routes for vrf: %w", err)
-	}
-
-	routesSet := map[string]struct{}{}
-
-	for _, r := range routes {
-		routesSet[r.String()] = struct{}{}
-	}
-
-	for _, ip := range result.IPs {
-		cidr := net.IPNet{
-			IP:   ip.Address.IP.Mask(ip.Address.Mask),
-			Mask: ip.Address.Mask,
-		}
-
-		_, ok := routesSet[cidr.String()]
-		if !ok {
-			return fmt.Errorf("no route to vrf for %s", cidr.String())
 		}
 	}
 
