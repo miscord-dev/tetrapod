@@ -16,6 +16,10 @@
       "vrf": "tetrapod-vrf"
     },
     {
+      "type": "tetra-extra-routes",
+      "vrf": "tetrapod-vrf"
+    },
+    {
       "type": "route-pods"
     }
   ]
