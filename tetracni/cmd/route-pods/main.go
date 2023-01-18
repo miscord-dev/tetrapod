@@ -106,13 +106,13 @@ func cmdAdd(args *skel.CmdArgs) error {
 		return fmt.Errorf("bridge not found")
 	}
 
-	if err := netlink.LinkSetMaster(hostVeth, bridge); err != nil {
-		return fmt.Errorf("failed to set master of %s %s: %w", hostVeth.Name, bridge.Name, err)
+	if err := netlink.LinkSetMaster(peerVeth, bridge); err != nil {
+		return fmt.Errorf("failed to set master of %s %s: %w", peerVeth.Name, bridge.Name, err)
 	}
 
 	for _, ip := range result.IPs {
 		addr, _ := ipaddr.NewIPAddressFromNetIPNet(&ip.Address)
-		cidr, _ := addr.ToZeroHost()
+		cidr := addr.GetUpper().Increment(-1)
 
 		netlinkAddr := netlink.Addr{
 			IPNet: &net.IPNet{
