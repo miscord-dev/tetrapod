@@ -41,6 +41,10 @@ func loadConfig(stdin []byte, cniArgs string) (*Conf, *current.Result, error) {
 		return nil, nil, fmt.Errorf("failed to retrieve result: %w", err)
 	}
 
+	if conf.SocketPath == "" {
+		conf.SocketPath = cniserver.DefaultSocketPath
+	}
+
 	var args Args
 	if err := types.LoadArgs(cniArgs, &args); err != nil {
 		return nil, nil, fmt.Errorf("failed to load args: %w", err)
