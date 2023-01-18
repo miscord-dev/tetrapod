@@ -180,6 +180,9 @@ func (r *ExtraPodCIDRSyncReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	podHandler := handler.EnqueueRequestsFromMapFunc(func(o client.Object) []reconcile.Request {
 		pod := o.(*corev1.Pod)
 
+		if pod.Spec.NodeName != r.NodeName {
+			return nil
+		}
 		if pod.Annotations[labels.AnnotationExtraPodCIDRTemplatesKey] == "" {
 			return nil
 		}
