@@ -21,11 +21,7 @@ func findVeth(hostVethName, peerVethName string) (hostVeth, peerVeth *netlink.Ve
 	hostVethLink, err := netlink.LinkByName(hostVethName)
 
 	if err != nil {
-		_, notFound := err.(netlink.LinkNotFoundError)
-
-		if !notFound {
-			return nil, nil, fmt.Errorf("failed to find veth %s: %w", hostVethName, err)
-		}
+		return nil, nil, fmt.Errorf("failed to find veth %s: %w", hostVethName, err)
 	}
 
 	hostVeth, ok := hostVethLink.(*netlink.Veth)
