@@ -14,6 +14,10 @@
     {
       "type": "hostvrf",
       "vrf": "tetrapod-vrf"
+    },
+    {
+      "type": "route-pods",
+      "vrf": "tetrapod-vrf"
     }
   ]
 }
