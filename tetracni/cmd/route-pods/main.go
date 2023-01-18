@@ -53,6 +53,9 @@ func setupVeth(hostVethName, peerVethName string) (hostVeth, peerVeth *netlink.V
 		return hostVeth, peerVeth, nil
 	case errors.As(err, &netlink.LinkNotFoundError{}):
 		hostVethLink := &netlink.Veth{
+			LinkAttrs: netlink.LinkAttrs{
+				Name: hostVethName,
+			},
 			PeerName: peerVethName,
 		}
 
