@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/coreos/go-iptables/iptables"
 	"github.com/vishvananda/netlink"
@@ -34,21 +33,23 @@ func setUpIPTables(ipt *iptables.IPTables, hostVeth *netlink.Veth, redirectedCha
 	}
 
 	for _, chain := range iptablesChains {
-		rule := fmt.Sprintf("-j %s", redirectedChain)
+		rule := []string{"-j", redirectedChain}
 
-		if err := ipt.AppendUnique(iptablesFilterTable, chain, rule); err != nil {
-			return fmt.Errorf("failed to add a rule %s to %s/%s: %w", rule, iptablesFilterTable, chain, err)
+		if err := ipt.AppendUnique(iptablesFilterTable, chain, rule...); err != nil {
+			return fmt.Errorf("failed to add a rule %v to %s/%s: %w", rule, iptablesFilterTable, chain, err)
 		}
 	}
 
-	rules := []string{
-		fmt.Sprintf("-o %s -j ACCEPT", hostVeth.Name),
-		fmt.Sprintf("-i %s -m state --state RELATED,ESTABLISHED -j ACCEPT", hostVeth.Name),
-		fmt.Sprintf("-i %s -j REJECT --reject-with icmp-port-unreachable", hostVeth.Name),
+	rules := [][]string{
+		{"-o", hostVeth.Name, "-j", "ACCEPT", hostVeth.Name},
+		{"-i", hostVeth.Name, "-m", "state", "--state", "RELATED,ESTABLISHED", "-j", "ACCEPT"},
+		{"-i", hostVeth.Name, "-j", "REJECT", "--reject-with", "icmp-port-unreachable"},
 	}
 
-	if err := ipt.AppendUnique(iptablesFilterTable, redirectedChain, rules...); err != nil {
-		return fmt.Errorf("failed to append rules %s to %s/%s", strings.Join(rules, ", "), iptablesFilterTable, redirectedChain)
+	for _, rule := range rules {
+		if err := ipt.AppendUnique(iptablesFilterTable, redirectedChain, rule...); err != nil {
+			return fmt.Errorf("failed to append rules %v to %s/%s", rule, iptablesFilterTable, redirectedChain)
+		}
 	}
 
 	return nil
