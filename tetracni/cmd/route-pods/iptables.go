@@ -43,7 +43,7 @@ func setUpIPTables(ipt *iptables.IPTables, hostVeth *netlink.Veth, redirectedCha
 	rules := [][]string{
 		{"-o", hostVeth.Name, "-j", "ACCEPT"},
 		{"-i", hostVeth.Name, "-m", "state", "--state", "RELATED,ESTABLISHED", "-j", "ACCEPT"},
-		{"-i", hostVeth.Name, "-j", "REJECT", "--reject-with", "icmp-port-unreachable"},
+		{"-i", hostVeth.Name, "-j", "DROP"},
 	}
 
 	for _, rule := range rules {
