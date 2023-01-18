@@ -41,14 +41,14 @@ func setUpIPTables(ipt *iptables.IPTables, hostVeth *netlink.Veth, redirectedCha
 	}
 
 	rules := [][]string{
-		{"-o", hostVeth.Name, "-j", "ACCEPT", hostVeth.Name},
+		{"-o", hostVeth.Name, "-j", "ACCEPT"},
 		{"-i", hostVeth.Name, "-m", "state", "--state", "RELATED,ESTABLISHED", "-j", "ACCEPT"},
 		{"-i", hostVeth.Name, "-j", "REJECT", "--reject-with", "icmp-port-unreachable"},
 	}
 
 	for _, rule := range rules {
 		if err := ipt.AppendUnique(iptablesFilterTable, redirectedChain, rule...); err != nil {
-			return fmt.Errorf("failed to append rules %v to %s/%s", rule, iptablesFilterTable, redirectedChain)
+			return fmt.Errorf("failed to append rules %v to %s/%s: %w", rule, iptablesFilterTable, redirectedChain, err)
 		}
 	}
 
