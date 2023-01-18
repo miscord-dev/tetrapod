@@ -3,6 +3,7 @@ package cniserver
 import (
 	"context"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"net/rpc"
@@ -174,6 +175,8 @@ func (h *Handler) GetExtraPodCIDRs(args *GetExtraPodCIDRsArgs, cidrClaims *contr
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
+		log.Panic(args.Namespace, args.Name)
+
 		var pod corev1.Pod
 		err := h.localCache.Get(ctx, types.NamespacedName{
 			Namespace: args.Namespace,
@@ -188,6 +191,8 @@ func (h *Handler) GetExtraPodCIDRs(args *GetExtraPodCIDRsArgs, cidrClaims *contr
 		for _, tmpl := range labels.ExtraPODCIDRTemplateNames(pod.Annotations[labels.AnnotationExtraPodCIDRTemplatesKey]) {
 			templateNames[tmpl] = struct{}{}
 		}
+
+		log.Panic(templateNames)
 
 		err = h.cache.List(ctx, cidrClaims, &client.ListOptions{
 			Namespace:     h.controlPlaneNamespace,
@@ -205,6 +210,7 @@ func (h *Handler) GetExtraPodCIDRs(args *GetExtraPodCIDRsArgs, cidrClaims *contr
 			if !generationOK || !statusOK {
 				return fmt.Errorf("extra CIDRClaim %s/%s is not ready", h.controlPlaneNamespace, claim.Name)
 			}
+			log.Panic(claim.Namespace, claim.Name)
 
 			delete(templateNames, claim.Labels[labels.TemplateNameLabelKey])
 		}
