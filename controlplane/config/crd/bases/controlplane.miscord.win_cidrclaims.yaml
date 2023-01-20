@@ -15,7 +15,14 @@ spec:
     singular: cidrclaim
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .status.cidr
+      name: CIDR
+      type: string
+    - jsonPath: .status.state
+      name: State
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: CIDRClaim is the Schema for the cidrclaims API

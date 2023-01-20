@@ -15,7 +15,11 @@ spec:
     singular: cidrblock
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.cidr
+      name: CIDR
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: CIDRBlock is the Schema for the cidrblocks API
