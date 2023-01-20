@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -114,7 +115,7 @@ func (r *CIDRClaimerReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		claim.Spec.SizeBit = tmpl.Spec.SizeBit
 
 		if selfNode != nil {
-			return ctrl.SetControllerReference(selfNode, &claim, r.Scheme)
+			return controllerutil.SetOwnerReference(selfNode, &claim, r.Scheme)
 		}
 
 		return nil
