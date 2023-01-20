@@ -22,12 +22,14 @@ import (
 
 	controlplanev1alpha1 "github.com/miscord-dev/tetrapod/controlplane/api/v1alpha1"
 	"github.com/miscord-dev/tetrapod/tetrad/pkg/labels"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -79,9 +81,22 @@ func (r *CIDRClaimerReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return reconcile.Result{}, nil
 	}
 
+	selfNode := &controlplanev1alpha1.PeerNode{}
+	err := r.Get(ctx, types.NamespacedName{
+		Namespace: r.ControlPlaneNamespace,
+		Name:      peerNodeName(r.ClusterName, r.NodeName),
+	}, selfNode)
+
+	switch {
+	case errors.IsNotFound(err):
+		selfNode = nil
+	case err != nil:
+		return reconcile.Result{}, fmt.Errorf("failed to get self PeerNode: %w", err)
+	}
+
 	var tmpl controlplanev1alpha1.CIDRClaimTemplate
 
-	err := r.Get(ctx, types.NamespacedName{
+	err = r.Get(ctx, types.NamespacedName{
 		Namespace: r.ControlPlaneNamespace,
 		Name:      req.Name,
 	}, &tmpl)
@@ -98,6 +113,10 @@ func (r *CIDRClaimerReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		claim.Labels = r.Labels(req.Name)
 		claim.Spec.Selector = tmpl.Spec.Selector
 		claim.Spec.SizeBit = tmpl.Spec.SizeBit
+
+		if selfNode != nil {
+			return controllerutil.SetOwnerReference(selfNode, &claim, r.Scheme)
+		}
 
 		return nil
 	})
