@@ -134,6 +134,8 @@ func (wg *Wireguard) Load() {
 	}
 	if wg.VRF == "" {
 		wg.VRF = "tetrapod-vrf"
+	} else if wg.VRF == "-" {
+		wg.VRF = ""
 	}
 	if wg.Table == 0 {
 		wg.Table = 1351
