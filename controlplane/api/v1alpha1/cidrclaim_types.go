@@ -75,6 +75,8 @@ type CIDRClaimStatus struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="CIDR",type=string,JSONPath=`.status.cidr`
+//+kubebuilder:printcolumn:name="State",type=string,JSONPath=`.status.state`
 
 // CIDRClaim is the Schema for the cidrclaims API
 type CIDRClaim struct {

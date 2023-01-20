@@ -41,6 +41,7 @@ type CIDRBlockStatus struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="CIDR",type=string,JSONPath=`.spec.cidr`
 
 // CIDRBlock is the Schema for the cidrblocks API
 type CIDRBlock struct {
