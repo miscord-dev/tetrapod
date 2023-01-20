@@ -138,16 +138,18 @@ func (e *wgEngine) init() error {
 	}
 	e.wireguard = wg
 
-	vrf, err := e.initVRF()
+	if e.vrf != "" {
+		vrf, err := e.initVRF()
 
-	if err != nil {
-		return fmt.Errorf("failed to init vrf: %w", err)
+		if err != nil {
+			return fmt.Errorf("failed to init vrf: %w", err)
+		}
+		e.vrfLink = vrf
 	}
 
 	if err := netlink.LinkSetUp(wg); err != nil {
 		return fmt.Errorf("ip link set %s up failed: %w", wg.LinkAttrs.Name, err)
 	}
-	e.vrfLink = vrf
 
 	return nil
 }
@@ -249,7 +251,9 @@ func (e *wgEngine) Reconfig(config wgtypes.Config, addrs []netlink.Addr) error {
 
 func (e *wgEngine) Close() error {
 	netlink.LinkDel(e.wireguard)
-	netlink.LinkDel(e.vrfLink)
+	if e.vrfLink != nil {
+		netlink.LinkDel(e.vrfLink)
+	}
 	e.wgctrl.Close()
 
 	return nil
