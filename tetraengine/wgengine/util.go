@@ -97,6 +97,9 @@ func diffConfigs(expected, current wgtypes.Config) (diff wgtypes.Config, hasDiff
 	}
 	diff.PrivateKey = expected.PrivateKey
 
+	if len(current.Peers) == 0 {
+		diff.ReplacePeers = true
+	}
 	diff.Peers = diffPeers(expected.Peers, current.Peers)
 
 	hasDiff = hasDiff || len(diff.Peers) != 0
