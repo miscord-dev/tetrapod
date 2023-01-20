@@ -123,7 +123,10 @@ func main() {
 	options.AndFromOrDie(ctrl.ConfigFile().AtPath(configPath).OfKind(&config))
 	options.LeaderElection = false
 
-	config.Load(configPath)
+	if err := config.Load(configPath); err != nil {
+		setupLog.Error(err, "config validation error")
+		os.Exit(1)
+	}
 	options.Namespace = config.ControlPlane.Namespace
 
 	if config.Wireguard.PrivateKey == "" {
@@ -225,12 +228,13 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&controllers.PeerNodeSyncReconciler{
-		Client:                mgr.GetClient(),
-		Scheme:                mgr.GetScheme(),
-		ControlPlaneNamespace: config.ControlPlane.Namespace,
-		ClusterName:           config.ClusterName,
-		NodeName:              config.NodeName,
-		Engine:                engine,
+		Client:                 mgr.GetClient(),
+		Scheme:                 mgr.GetScheme(),
+		ControlPlaneNamespace:  config.ControlPlane.Namespace,
+		ClusterName:            config.ClusterName,
+		NodeName:               config.NodeName,
+		Engine:                 engine,
+		StaticAdvertisedRoutes: config.StaticAdvertisedRoutes,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "PeerNodeSync")
 		os.Exit(1)

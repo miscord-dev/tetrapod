@@ -140,6 +140,10 @@ func (r *PeersSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			PublicDiscoKey: peer.Spec.PublicDiscoKey,
 		}
 
+		for _, route := range peer.Spec.StaticRoutes {
+			pc.AllowedIPs = append(pc.AllowedIPs, route)
+		}
+
 		for _, claim := range claims.Items {
 			if claim.Status.State != controlplanev1alpha1.CIDRClaimStatusStateReady {
 				continue

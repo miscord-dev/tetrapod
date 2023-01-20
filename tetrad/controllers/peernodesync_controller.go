@@ -43,10 +43,11 @@ type PeerNodeSyncReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
-	ControlPlaneNamespace string
-	ClusterName           string
-	NodeName              string
-	Engine                tetraengine.TetraEngine
+	ControlPlaneNamespace  string
+	ClusterName            string
+	NodeName               string
+	Engine                 tetraengine.TetraEngine
+	StaticAdvertisedRoutes []string
 
 	peerConfig atomic.Pointer[tetraengine.PeerConfig]
 }
@@ -93,6 +94,7 @@ func (r *PeerNodeSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		peerNode.Spec.Attributes.Arch = goruntime.GOARCH
 		peerNode.Spec.Attributes.OS = goruntime.GOOS
 		peerNode.Spec.Attributes.HostName = r.NodeName
+		peerNode.Spec.StaticRoutes = r.StaticAdvertisedRoutes
 
 		return nil
 	})

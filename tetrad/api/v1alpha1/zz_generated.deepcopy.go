@@ -33,6 +33,11 @@ func (in *CNIConfig) DeepCopyInto(out *CNIConfig) {
 	in.ControllerManagerConfigurationSpec.DeepCopyInto(&out.ControllerManagerConfigurationSpec)
 	in.ControlPlane.DeepCopyInto(&out.ControlPlane)
 	out.Wireguard = in.Wireguard
+	if in.StaticAdvertisedRoutes != nil {
+		in, out := &in.StaticAdvertisedRoutes, &out.StaticAdvertisedRoutes
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	in.CNID.DeepCopyInto(&out.CNID)
 }
 

@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -189,10 +190,11 @@ type CNIConfig struct {
 	NetworkNamespace                                  string       `json:"networkNamespace"`
 	Wireguard                                         Wireguard    `json:"wireguard"`
 	Cleanup                                           bool         `json:"cleanup"`
+	StaticAdvertisedRoutes                            []string     `json:"staticAdvertisedRoutes"`
 	CNID                                              CNIDConfig   `json:"cnid"`
 }
 
-func (cc *CNIConfig) Load(configPath string) {
+func (cc *CNIConfig) Load(configPath string) error {
 	loadFromEnv(&cc.ClusterName, "TETRAPOD_CLUSTER_NAME")
 	loadFromEnv(&cc.NodeName, "TETRAPOD_NODE_NAME")
 	loadFromEnv(&cc.NetworkNamespace, "TETRAPOD_NETNS")
@@ -200,4 +202,14 @@ func (cc *CNIConfig) Load(configPath string) {
 	cc.ControlPlane.Load(configPath)
 	cc.Wireguard.Load()
 	cc.CNID.Load(configPath)
+
+	for _, route := range cc.StaticAdvertisedRoutes {
+		_, _, err := net.ParseCIDR(route)
+
+		if err != nil {
+			return fmt.Errorf("failed to parse static advertised route %s: %w", route, err)
+		}
+	}
+
+	return nil
 }
