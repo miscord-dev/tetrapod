@@ -77,6 +77,19 @@ func (r *ExtraPodCIDRSyncReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return reconcile.Result{}, fmt.Errorf("failed to get Pod: %w", err)
 	}
 
+	selfNode := &controlplanev1alpha1.PeerNode{}
+	err = r.Get(ctx, types.NamespacedName{
+		Namespace: r.ControlPlaneNamespace,
+		Name:      peerNodeName(r.ClusterName, r.NodeName),
+	}, selfNode)
+
+	switch {
+	case errors.IsNotFound(err):
+		selfNode = nil
+	case err != nil:
+		return reconcile.Result{}, fmt.Errorf("failed to get self PeerNode: %w", err)
+	}
+
 	templateNames := labels.ExtraPODCIDRTemplateNames(pod.Annotations[labels.AnnotationExtraPodCIDRTemplatesKey])
 
 	for _, templateName := range templateNames {
@@ -104,6 +117,10 @@ func (r *ExtraPodCIDRSyncReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 			claim.Spec.Selector = tmpl.Spec.Selector
 			claim.Spec.SizeBit = tmpl.Spec.SizeBit
+
+			if selfNode != nil {
+				return ctrl.SetControllerReference(selfNode, &claim, r.Scheme)
+			}
 
 			return nil
 		})

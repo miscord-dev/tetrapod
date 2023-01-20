@@ -76,7 +76,7 @@ func (r *PeerNodeSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	var peerNode controlplanev1alpha1.PeerNode
 	peerNode.Namespace = r.ControlPlaneNamespace
-	peerNode.Name = fmt.Sprintf("%s-%s", r.ClusterName, r.NodeName)
+	peerNode.Name = peerNodeName(r.ClusterName, r.NodeName)
 
 	_, err := ctrl.CreateOrUpdate(ctx, r.Client, &peerNode, func() error {
 		peerNode.Labels = r.labels()
@@ -112,6 +112,10 @@ func (r *PeerNodeSyncReconciler) labels() map[string]string {
 
 func (r *PeerNodeSyncReconciler) addrsLabels() map[string]string {
 	return labels.NodeTypeForNode(r.ClusterName, r.NodeName)
+}
+
+func peerNodeName(clusterName, nodeName string) string {
+	return fmt.Sprintf("%s-%s", clusterName, nodeName)
 }
 
 // SetupWithManager sets up the controller with the Manager.
