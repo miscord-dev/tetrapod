@@ -57,7 +57,7 @@ func New(ifaceName, vrf string, table uint32, config *Config, logger *zap.Logger
 func (e *tetraEngine) init(ifaceName, vrf string, table uint32, config *Config) error {
 	var err error
 
-	e.wgEngine, err = wgengine.NewVRF(ifaceName, vrf, table)
+	e.wgEngine, err = wgengine.NewVRF(ifaceName, vrf, table, e.logger.With(zap.String("component", "wgengine")))
 	if err != nil {
 		return fmt.Errorf("failed to set up wgengine: %w", err)
 	}
