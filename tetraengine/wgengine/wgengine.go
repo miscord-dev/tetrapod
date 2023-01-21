@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/vishvananda/netlink"
+	"go.uber.org/zap"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -17,7 +18,7 @@ type Engine interface {
 
 var _ Engine = &wgEngine{}
 
-func NewVRF(ifaceName, vrf string, table uint32) (Engine, error) {
+func NewVRF(ifaceName, vrf string, table uint32, logger *zap.Logger) (Engine, error) {
 	e := wgEngine{
 		ifaceName: ifaceName,
 		vrf:       vrf,
@@ -48,6 +49,8 @@ type wgEngine struct {
 	vrfLink    *netlink.Vrf
 	prevConfig wgtypes.Config
 	wgctrl     *wgctrl.Client
+
+	logger *zap.Logger
 }
 
 func (e *wgEngine) initWireguard() (*netlink.Wireguard, error) {
@@ -214,6 +217,7 @@ func (e *wgEngine) reconfigRoutes(config wgtypes.Config) error {
 	desired := generateRoutesFromWGConfig(config, e.wireguard, int(e.table))
 	added, deleted := diffRoutes(desired, current)
 
+	var lastErr error
 	for _, d := range deleted {
 		if d.Scope == 254 { // link scope
 			continue
@@ -223,16 +227,18 @@ func (e *wgEngine) reconfigRoutes(config wgtypes.Config) error {
 		}
 
 		if err := e.netlink.RouteDel(&d); err != nil {
-			return fmt.Errorf("failed to delete %s: %w", d.Dst, err)
+			lastErr = fmt.Errorf("failed to delete %s: %w", d.Dst, err)
+			e.logger.Error("failed to delete a route", zap.Error(err), zap.String("dst", d.Dst.String()))
 		}
 	}
 	for _, a := range added {
 		if err := e.netlink.RouteAdd(&a); err != nil {
-			return fmt.Errorf("failed to add %s: %w", a.Dst, err)
+			lastErr = fmt.Errorf("failed to add %s: %w", a.Dst, err)
+			e.logger.Error("failed to add a route", zap.Error(err), zap.String("dst", a.Dst.String()))
 		}
 	}
 
-	return nil
+	return lastErr
 }
 
 func (e *wgEngine) Reconfig(config wgtypes.Config, addrs []netlink.Addr) error {
