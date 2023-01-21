@@ -89,7 +89,7 @@ func (r *CIDRClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if r.isReady(cidrClaim, selector, cidrBlocks.Items) {
-		return ctrl.Result{}, nil
+		return ctrl.Result{}, r.updateStatus(ctx, &cidrClaim, status)
 	}
 
 	var cidrClaims controlplanev1alpha1.CIDRClaimList
