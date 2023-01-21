@@ -23,6 +23,7 @@ func NewVRF(ifaceName, vrf string, table uint32, logger *zap.Logger) (Engine, er
 		ifaceName: ifaceName,
 		vrf:       vrf,
 		table:     table,
+		logger:    logger,
 	}
 
 	wgctrl, err := wgctrl.New()
