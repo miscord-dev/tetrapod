@@ -182,18 +182,21 @@ func (e *wgEngine) reconfigAddresses(addrs []netlink.Addr) error {
 
 	added, deleted := diffIPs(addrs, current)
 
+	var lastErr error
 	for _, d := range deleted {
 		if err := e.netlink.AddrDel(e.wireguard, &d); err != nil {
-			return fmt.Errorf("failed to delete %v: %w", d, err)
+			lastErr = fmt.Errorf("failed to delete %s: %w", d, err)
+			e.logger.Error("failed to delete an address", zap.Error(err), zap.String("addr", d.String()))
 		}
 	}
 	for _, a := range added {
 		if err := e.netlink.AddrAdd(e.wireguard, &a); err != nil {
-			return fmt.Errorf("failed to add %v: %w", a, err)
+			lastErr = fmt.Errorf("failed to add %s: %w", a, err)
+			e.logger.Error("failed to add an address", zap.Error(err), zap.String("addr", a.String()))
 		}
 	}
 
-	return nil
+	return lastErr
 }
 
 func printRoutes(msg string, routes []netlink.Route) {
@@ -245,14 +248,19 @@ func (e *wgEngine) Reconfig(config wgtypes.Config, addrs []netlink.Addr) error {
 	if err := e.reconfigWireguard(config); err != nil {
 		return fmt.Errorf("failed to reconfig wireguard: %w", err)
 	}
+
+	var lastErr error
+
 	if err := e.reconfigAddresses(addrs); err != nil {
-		return fmt.Errorf("failed to reconfig addresses: %w", err)
+		lastErr = err
+		e.logger.Error("failed to reconfig addresses", zap.Error(err))
 	}
 	if err := e.reconfigRoutes(config); err != nil {
-		return fmt.Errorf("failed to reconfig routes: %w", err)
+		lastErr = err
+		e.logger.Error("failed to reconfig addresses", zap.Error(err))
 	}
 
-	return nil
+	return lastErr
 }
 
 func (e *wgEngine) Close() error {
