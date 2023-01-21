@@ -68,6 +68,10 @@ func NamespacedNameFromExtraPodCIDR(labels map[string]string) types.NamespacedNa
 const AnnotationExtraPodCIDRTemplatesKey = "tetrapod.miscord.win/extra-templates"
 
 func ExtraPODCIDRTemplateNames(annotationValue string) []string {
+	if annotationValue == "" {
+		return nil
+	}
+
 	extraTemplates := strings.Split(annotationValue, ",")
 	for i := range extraTemplates {
 		extraTemplates[i] = strings.TrimSpace(extraTemplates[i])
