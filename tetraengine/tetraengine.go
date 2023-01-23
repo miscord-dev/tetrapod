@@ -34,6 +34,7 @@ type tetraEngine struct {
 	discoPrivateKey       wgkey.DiscoPrivateKey
 	currentConfig         atomic.Pointer[Config]
 	endpoints             atomic.Pointer[[]netip.AddrPort]
+	globalEndpoints       atomic.Pointer[[]netip.AddrPort]
 	callback              atomic.Pointer[func(PeerConfig)]
 	reconfigTriggerCh     chan struct{}
 	latestDiscoStatusHash atomic.Pointer[string]
@@ -104,8 +105,9 @@ func (e *tetraEngine) init(ifaceName, vrf string, table uint32, config *Config) 
 	return nil
 }
 
-func (e *tetraEngine) endpointsCallback(addrPorts []netip.AddrPort) {
-	e.endpoints.Store(&addrPorts)
+func (e *tetraEngine) endpointsCallback(endpoints, globalEndpoints []netip.AddrPort) {
+	e.endpoints.Store(&endpoints)
+	e.globalEndpoints.Store(&globalEndpoints)
 	e.notify()
 }
 
@@ -178,6 +180,13 @@ func (e *tetraEngine) runReconfig() {
 }
 
 func (e *tetraEngine) reconfigDisco(cfg *Config) {
+	globalAddresses := map[netip.Addr]struct{}{}
+	if eps := e.globalEndpoints.Load(); eps != nil && *eps != nil {
+		for _, ep := range *eps {
+			globalAddresses[ep.Addr()] = struct{}{}
+		}
+	}
+
 	peers := make(map[wgkey.DiscoPublicKey][]netip.AddrPort)
 	for _, peer := range cfg.Peers {
 		logger := e.logger.With(
@@ -202,6 +211,11 @@ func (e *tetraEngine) reconfigDisco(cfg *Config) {
 			if err != nil {
 				logger.Error("failed to parse endpoint", zap.Error(err), zap.String("endpoint", eps[i]))
 
+				continue
+			}
+
+			// Sending disco packets to the NAT shared with other peers can break the NAT table
+			if _, sharingNAT := globalAddresses[addrPort.Addr()]; sharingNAT {
 				continue
 			}
 

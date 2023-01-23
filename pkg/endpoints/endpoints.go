@@ -18,7 +18,7 @@ type Collector struct {
 	listenPort     int
 
 	addrV4, addrV6 atomic.Pointer[netip.AddrPort]
-	callback       atomic.Pointer[func([]netip.AddrPort)]
+	callback       atomic.Pointer[func(endpoints, globalEndpoints []netip.AddrPort)]
 }
 
 func NewCollector(conn types.PacketConn, listenPort int, endpoint string, logger *zap.Logger) (res *Collector, err error) {
@@ -86,6 +86,8 @@ func (c *Collector) notify() {
 	}
 
 	addrPorts := make([]netip.AddrPort, 0, len(addrs))
+	var globalEndpoints []netip.AddrPort
+
 	for _, a := range addrs {
 		ipNet := a.(*net.IPNet)
 		addr, _ := netip.AddrFromSlice(ipNet.IP)
@@ -97,9 +99,11 @@ func (c *Collector) notify() {
 
 	if addrPort := c.addrV4.Load(); addrPort != nil {
 		addrPorts = append(addrPorts, *addrPort)
+		globalEndpoints = append(globalEndpoints, *addrPort)
 	}
 	if addrPort := c.addrV6.Load(); addrPort != nil {
 		addrPorts = append(addrPorts, *addrPort)
+		globalEndpoints = append(globalEndpoints, *addrPort)
 	}
 
 	fn := c.callback.Load()
@@ -108,10 +112,10 @@ func (c *Collector) notify() {
 		return
 	}
 
-	(*fn)(addrPorts)
+	(*fn)(addrPorts, globalEndpoints)
 }
 
-func (c *Collector) Notify(fn func([]netip.AddrPort)) {
+func (c *Collector) Notify(fn func(endpoints, globalEndpoints []netip.AddrPort)) {
 	c.callback.Store(&fn)
 }
 
