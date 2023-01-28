@@ -6,6 +6,7 @@
       "type": "bridge",
       "bridge": "cni0",
       "isDefaultGateway": true,
+      "mtu": 1280,
       "ipam": {
         "type": "tetra-pod-ipam",
         "ipamPlugin": "host-local"
