@@ -1,5 +1,3 @@
-# tetrapod
-
 <p align="center">
   <img src="./docs/logo/png/logo-no-background.png" alt="tetrapod logo" />
 </p>
