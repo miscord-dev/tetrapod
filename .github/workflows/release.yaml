@@ -36,4 +36,4 @@ jobs:
           draft: true
           generate_release_notes: true
           files: |
-            ${{ matrix.component }}/components.yaml
+            ${{ matrix.component }}/dist/${{ matrix.component }}.yaml
