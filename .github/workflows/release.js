@@ -6,5 +6,5 @@ const getVersion = () => {
 }
 
 exports.release = async (component) => {
-    await $`make release IMG=ghcr.io/miscord-dev/tetrapod-${component}:${getVersion()}`
+    await $`cd ${component} && make release IMG=ghcr.io/miscord-dev/tetrapod-${component}:${getVersion()}`
 }
