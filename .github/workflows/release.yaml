@@ -1,0 +1,39 @@
+name: Release yaml
+
+on:
+  pull_request:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        component: [controlplane, tetrad]
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v3
+      - name: Release
+        env:
+          FORCE_COLOR: 3
+        run: |
+          npx zx <<'EOF'
+          const script = require('./.github/workflows/release.js').release
+          script('${{ matrix.component }}').then(result => {
+            console.log(result)
+          }).catch(err => {
+            throw err
+          })
+          EOF
+      - 
+        name: Publish Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          draft: true
+          generate_release_notes: true
+          files: |
+            ${{ matrix.component }}/components.yaml
