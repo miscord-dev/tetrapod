@@ -21,12 +21,12 @@ FROM zigdownloader-${BUILDARCH} AS zigdownloader
 # Prepare for targetarch amd64
 FROM --platform=$BUILDPLATFORM golang:1.19 AS gobase-amd64
 
-ENV ZIGTARGET x86_64-linux-musl
+ENV ZIGTARGET x86_64-linux-gnu
 
 # Prepare for targetarch arm64
 FROM --platform=$BUILDPLATFORM golang:1.19 AS gobase-arm64
 
-ENV ZIGTARGET aarch64-linux-musl
+ENV ZIGTARGET aarch64-linux-gnu
 
 # Build the manager binary
 FROM gobase-${TARGETARCH} AS gomod
