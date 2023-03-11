@@ -60,8 +60,8 @@ ENV PATH $PATH:/zig
 # the docker BUILDPLATFORM arg will be linux/arm64 when for Apple x86 it will be linux/amd64. Therefore,
 # by leaving it empty we can ensure that the container and binary shipped on it will have the same platform.
 RUN mkdir -p bin && \
-    GOOS=linux GOARCH=${TARGETARCH} CC="zig cc -target ${ZIGTARGET}" CGO_ENABLED=1 go build -a -o ./bin/tetrad ./tetrad && \
-    GOOS=linux GOARCH=${TARGETARCH} CGO_ENABLED=0                                                                     go build -a -o ./bin/tetrad-entrypoint ./tetrad/cmd/tetrad-entrypoint
+    GOOS=linux GOARCH=${TARGETARCH} CGO_ENABLED=1 CC="zig cc -target ${ZIGTARGET}" go build -a -o ./bin/tetrad ./tetrad && \
+    GOOS=linux GOARCH=${TARGETARCH} CGO_ENABLED=0                                  go build -a -o ./bin/tetrad-entrypoint ./tetrad/cmd/tetrad-entrypoint
 
 FROM gomod AS tetracni
 
