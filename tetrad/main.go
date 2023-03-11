@@ -120,7 +120,11 @@ func main() {
 
 	var config clientmiscordwinv1alpha1.CNIConfig
 
-	options.AndFromOrDie(ctrl.ConfigFile().AtPath(configPath).OfKind(&config))
+	if _, err := os.Stat(configPath); err == nil {
+		options.AndFromOrDie(ctrl.ConfigFile().AtPath(configPath).OfKind(&config))
+	} else {
+		setupLog.Info("config file is not found", "path", configPath)
+	}
 	options.LeaderElection = false
 
 	if err := config.Load(configPath); err != nil {

@@ -75,8 +75,6 @@ spec:
             fieldRef:
               fieldPath: spec.nodeName
         volumeMounts:
-        - name: config
-          mountPath: /etc/tetrapod
         - name: keys
           mountPath: /etc/tetrapod/keys
         - name: socket
@@ -95,9 +93,6 @@ spec:
             cpu: 100m
             memory: 256Mi
       volumes:
-      - name: config
-        configMap:
-          name: tetrad-config
       - name: keys
         emptyDir: {}
       - name: socket
