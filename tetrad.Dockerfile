@@ -65,6 +65,8 @@ RUN mkdir -p bin && \
 
 FROM gomod AS tetracni
 
+ARG TARGETARCH
+
 COPY tetracni/ tetracni/
 COPY Makefile Makefile
 
