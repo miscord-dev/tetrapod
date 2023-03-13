@@ -219,7 +219,7 @@ func (r *PeersSyncReconciler) labels() map[string]string {
 }
 
 func (r *PeersSyncReconciler) addressLabels() map[string]string {
-	return tetrapodlabels.NodeTypeForNode(r.ClusterName, r.NodeName)
+	return tetrapodlabels.NodeTypeForNode(r.ClusterName, r.NodeName, "")
 }
 
 // SetupWithManager sets up the controller with the Manager.

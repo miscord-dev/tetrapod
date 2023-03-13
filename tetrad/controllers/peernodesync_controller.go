@@ -111,7 +111,7 @@ func (r *PeerNodeSyncReconciler) labels() map[string]string {
 }
 
 func (r *PeerNodeSyncReconciler) addrsLabels() map[string]string {
-	return labels.NodeTypeForNode(r.ClusterName, r.NodeName)
+	return labels.NodeTypeForNode(r.ClusterName, r.NodeName, "")
 }
 
 func peerNodeName(clusterName, nodeName string) string {

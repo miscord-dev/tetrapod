@@ -170,6 +170,10 @@ type GetExtraPodCIDRsArgs struct {
 }
 
 func (h *Handler) GetExtraPodCIDRs(args *GetExtraPodCIDRsArgs, cidrClaims *controlplanev1alpha1.CIDRClaimList) error {
+	if h.localCache == nil {
+		return nil
+	}
+
 	fn := func() error {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
