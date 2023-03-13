@@ -14,10 +14,13 @@ func ForNode(clusterName, nodeName string) map[string]string {
 	}
 }
 
-func NodeTypeForNode(clusterName, nodeName string) map[string]string {
+func NodeTypeForNode(clusterName, nodeName, templateName string) map[string]string {
 	labels := ForNode(clusterName, nodeName)
 
 	labels["client.miscord.win/type"] = "node"
+	if templateName != "" {
+		labels[TemplateNameLabelKey] = templateName
+	}
 
 	return labels
 }

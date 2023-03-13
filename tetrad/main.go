@@ -225,7 +225,7 @@ func main() {
 			return name[:53-9] + "-" + hex.EncodeToString(hash[:])[:8]
 		},
 		Labels: func(templateName string) map[string]string {
-			return labels.NodeTypeForNode(config.ClusterName, config.NodeName)
+			return labels.NodeTypeForNode(config.ClusterName, config.NodeName, templateName)
 		},
 	}).SetupWithManager(mgr, "NodeAddressSync"); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CIDRClaimer")
