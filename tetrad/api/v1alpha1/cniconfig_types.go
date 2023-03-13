@@ -44,6 +44,16 @@ func loadFromEnv(v *string, key string) {
 	*v = value
 }
 
+func loadFromEnvBool(v *bool, key string) {
+	value := os.Getenv(key)
+
+	if value == "" {
+		return
+	}
+
+	*v, _ = strconv.ParseBool(key)
+}
+
 func loadFromEnvArray(v *[]string, key string) {
 	value := os.Getenv(key)
 
@@ -170,6 +180,9 @@ type CNIDConfig struct {
 }
 
 func (c *CNIDConfig) Load(configPath string) {
+	loadFromEnvArray(&c.AddressClaimTemplates, "TETRAPOD_CNI_POD_TEMPLATES")
+	loadFromEnvBool(&c.Extra, "TETRAPOD_CNI_ENABLE_EXTRA_CLAIMS")
+
 	if c.SocketPath == "" {
 		c.SocketPath = cniserver.DefaultSocketPath
 	}
