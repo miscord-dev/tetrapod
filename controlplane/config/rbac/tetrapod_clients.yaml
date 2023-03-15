@@ -1,18 +1,25 @@
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  creationTimestamp: null
-  name: manager-role
+  name: tetrapod-clients-role
 rules:
+# CIDRClaimTemplates
 - apiGroups:
   - controlplane.miscord.win
   resources:
-  - cidrblocks
+  - cidrclaimtemplates
   verbs:
   - get
   - list
   - watch
+- apiGroups:
+  - controlplane.miscord.win
+  resources:
+  - cidrclaimtemplates/status
+  verbs:
+  - get
+
+# CIDRClaims
 - apiGroups:
   - controlplane.miscord.win
   resources:
@@ -28,17 +35,11 @@ rules:
 - apiGroups:
   - controlplane.miscord.win
   resources:
-  - cidrclaims/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - controlplane.miscord.win
-  resources:
   - cidrclaims/status
   verbs:
   - get
-  - patch
-  - update
+
+# PeerNodes
 - apiGroups:
   - controlplane.miscord.win
   resources:
@@ -54,14 +55,6 @@ rules:
 - apiGroups:
   - controlplane.miscord.win
   resources:
-  - peernodes/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - controlplane.miscord.win
-  resources:
   - peernodes/status
   verbs:
   - get
-  - patch
-  - update
