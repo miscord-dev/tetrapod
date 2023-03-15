@@ -8,6 +8,14 @@ rules:
 - apiGroups:
   - controlplane.miscord.win
   resources:
+  - cidrblocks
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - controlplane.miscord.win
+  resources:
   - cidrclaims
   verbs:
   - create
