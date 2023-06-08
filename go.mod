@@ -11,7 +11,7 @@ require (
 	github.com/go-logr/zapr v1.2.3
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.5.9
-	github.com/google/gopacket v1.1.20-0.20220810144506-32ee38206866
+	github.com/google/gopacket v1.1.19
 	github.com/mdlayher/netlink v1.6.2
 	github.com/onsi/ginkgo/v2 v2.6.0
 	github.com/onsi/gomega v1.24.1
