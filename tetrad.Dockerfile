@@ -77,7 +77,9 @@ FROM golang:1.19 AS plugins
 
 WORKDIR /workspace
 COPY aqua.yaml aqua.yaml
+COPY aqua-policy.yaml aqua-policy.yaml
 COPY aqua/ aqua/
+ENV AQUA_DISABLE_POLICY=true
 
 RUN wget https://github.com/aquaproj/aqua/releases/latest/download/aqua_linux_$(go env GOARCH).tar.gz && \
     tar xf aqua_linux_*.tar.gz -C /bin/ && \
