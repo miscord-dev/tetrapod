@@ -1,6 +1,6 @@
 module github.com/miscord-dev/tetrapod
 
-go 1.18
+go 1.20
 
 require (
 	github.com/cenkalti/backoff/v4 v4.2.0
@@ -21,11 +21,11 @@ require (
 	github.com/vishvananda/netns v0.0.0-20211101163701-50045581ed74
 	go.uber.org/atomic v1.10.0
 	go.uber.org/zap v1.24.0
-	golang.org/x/crypto v0.7.0
+	golang.org/x/crypto v0.10.0
 	golang.org/x/exp v0.0.0-20230315142452-642cacee5cc0
-	golang.org/x/net v0.8.0
+	golang.org/x/net v0.11.0
 	golang.org/x/sync v0.1.0
-	golang.org/x/sys v0.6.0
+	golang.org/x/sys v0.9.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20230215201556-9c5414ab4bde
 	k8s.io/api v0.26.2
 	k8s.io/apimachinery v0.26.2
@@ -34,7 +34,6 @@ require (
 )
 
 require (
-	github.com/alexflint/go-filemutex v1.1.0 // indirect
 	github.com/benbjohnson/clock v1.1.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
@@ -75,8 +74,8 @@ require (
 	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b // indirect
-	golang.org/x/term v0.6.0 // indirect
-	golang.org/x/text v0.8.0 // indirect
+	golang.org/x/term v0.9.0 // indirect
+	golang.org/x/text v0.10.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.6.0 // indirect
 	golang.zx2c4.com/wireguard v0.0.0-20220920152132-bb719d3a6e2c // indirect
