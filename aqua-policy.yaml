@@ -14,7 +14,7 @@ registries:
 #   path: registry.yaml
   - name: local
     type: local
-    path: registry.yaml
+    path: aqua/registry.yml
   - type: standard
     ref: semver(">= 3.0.0")
 
