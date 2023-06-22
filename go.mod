@@ -18,7 +18,7 @@ require (
 	github.com/pion/stun v0.3.5
 	github.com/seancfoley/ipaddress-go v1.2.1
 	github.com/vishvananda/netlink v1.2.1-beta.2
-	github.com/vishvananda/netns v0.0.0-20211101163701-50045581ed74
+	github.com/vishvananda/netns v0.0.4
 	go.uber.org/atomic v1.10.0
 	go.uber.org/zap v1.24.0
 	golang.org/x/crypto v0.10.0
