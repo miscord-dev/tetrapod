@@ -109,8 +109,7 @@ type Wireguard struct {
 	ListenPort   int    `json:"listenPort"`
 	STUNEndpoint string `json:"stunEndpoint"`
 	Name         string `json:"name"`
-	VRF          string `json:"vrf"`
-	Table        int    `json:"table"`
+	Netns        string `json:"netns"`
 }
 
 func (wg *Wireguard) Load() {
@@ -142,13 +141,8 @@ func (wg *Wireguard) Load() {
 	if wg.Name == "" {
 		wg.Name = "tetrapod0"
 	}
-	if wg.VRF == "" {
-		wg.VRF = "tetrapod-vrf"
-	} else if wg.VRF == "-" {
-		wg.VRF = ""
-	}
-	if wg.Table == 0 {
-		wg.Table = 1351
+	if wg.Netns == "" {
+		wg.Netns = "tetrapod"
 	}
 }
 
