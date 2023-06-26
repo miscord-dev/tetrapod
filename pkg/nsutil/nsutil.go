@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"sync"
 
 	"github.com/vishvananda/netns"
 )
@@ -38,31 +39,44 @@ func CreateNamespace(name string) (netns.NsHandle, error) {
 }
 
 func RunInNamespace(handle netns.NsHandle, fn func() error) (err error) {
-	runtime.LockOSThread()
-	defer func() {
-		if err == nil {
-			runtime.UnlockOSThread()
+	impl := func() error {
+		runtime.LockOSThread()
+		defer func() {
+			if err == nil {
+				runtime.UnlockOSThread()
+			}
+		}()
+
+		cur, err := netns.Get()
+		if err != nil {
+			return err
 		}
+		defer func() {
+			if e := netns.Set(cur); e != nil {
+				err = fmt.Errorf("failed to recover netns: %w", err)
+			}
+			cur.Close()
+		}()
+
+		if err := netns.Set(handle); err != nil {
+			return fmt.Errorf("failed to set netns: %w", err)
+		}
+
+		if err := fn(); err != nil {
+			return fmt.Errorf("fn failed: %w", err)
+		}
+
+		return nil
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		err = impl()
 	}()
 
-	cur, err := netns.Get()
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if e := netns.Set(cur); e != nil {
-			err = fmt.Errorf("failed to recover netns: %w", err)
-		}
-		cur.Close()
-	}()
+	wg.Wait()
 
-	if err := netns.Set(handle); err != nil {
-		return fmt.Errorf("failed to set netns: %w", err)
-	}
-
-	if err := fn(); err != nil {
-		return fmt.Errorf("fn failed: %w", err)
-	}
-
-	return nil
+	return err
 }
