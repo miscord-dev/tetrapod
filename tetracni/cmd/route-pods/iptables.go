@@ -87,7 +87,7 @@ func setUpFirewall(peerNetns netns.NsHandle, peerVeth *netlink.Veth, conf *Conf)
 		})
 
 		if err != nil {
-			return fmt.Errorf("manipulating iptables in %s netns failed: %w", err)
+			return fmt.Errorf("manipulating iptables in %s netns failed: %w", peerNetns, err)
 		}
 	}
 
