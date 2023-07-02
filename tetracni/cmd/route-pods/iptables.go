@@ -4,7 +4,9 @@ import (
 	"fmt"
 
 	"github.com/coreos/go-iptables/iptables"
+	"github.com/miscord-dev/tetrapod/pkg/nsutil"
 	"github.com/vishvananda/netlink"
+	"github.com/vishvananda/netns"
 )
 
 const (
@@ -19,7 +21,7 @@ var (
 	}
 )
 
-func setUpIPTables(ipt *iptables.IPTables, hostVeth *netlink.Veth, redirectedChain string) error {
+func setUpIPTables(ipt *iptables.IPTables, peerVeth *netlink.Veth, redirectedChain string) error {
 	exists, err := ipt.ChainExists(iptablesFilterTable, redirectedChain)
 
 	if err != nil {
@@ -41,9 +43,9 @@ func setUpIPTables(ipt *iptables.IPTables, hostVeth *netlink.Veth, redirectedCha
 	}
 
 	rules := [][]string{
-		{"-o", hostVeth.Name, "-j", "ACCEPT"},
-		{"-i", hostVeth.Name, "-m", "state", "--state", "RELATED,ESTABLISHED", "-j", "ACCEPT"},
-		{"-i", hostVeth.Name, "-j", "DROP"},
+		{"-i", peerVeth.Name, "-j", "ACCEPT"},
+		{"-o", peerVeth.Name, "-m", "state", "--state", "RELATED,ESTABLISHED", "-j", "ACCEPT"},
+		{"-o", peerVeth.Name, "-j", "DROP"},
 	}
 
 	for _, rule := range rules {
@@ -55,29 +57,37 @@ func setUpIPTables(ipt *iptables.IPTables, hostVeth *netlink.Veth, redirectedCha
 	return nil
 }
 
-func setUpFirewall(hostVeth *netlink.Veth, conf *Conf) error {
+func setUpFirewall(peerNetns netns.NsHandle, peerVeth *netlink.Veth, conf *Conf) error {
 	switch conf.Firewall {
 	case FirewallNever:
 		return nil
 	case FirewallIPTables:
-		ipt, err := iptables.NewWithProtocol(iptables.ProtocolIPv4)
+		err := nsutil.RunInNamespace(peerNetns, func() error {
+			ipt, err := iptables.NewWithProtocol(iptables.ProtocolIPv4)
+
+			if err != nil {
+				return fmt.Errorf("failed to set up iptables: %w", err)
+			}
+
+			if err := setUpIPTables(ipt, peerVeth, conf.IPTablesChain); err != nil {
+				return fmt.Errorf("failed to set up iptables for v4: %w", err)
+			}
+
+			ipt, err = iptables.NewWithProtocol(iptables.ProtocolIPv6)
+
+			if err != nil {
+				return fmt.Errorf("failed to set up iptables: %w", err)
+			}
+
+			if err := setUpIPTables(ipt, peerVeth, conf.IPTablesChain); err != nil {
+				return fmt.Errorf("failed to set up iptables for v4: %w", err)
+			}
+
+			return nil
+		})
 
 		if err != nil {
-			return fmt.Errorf("failed to set up iptables: %w", err)
-		}
-
-		if err := setUpIPTables(ipt, hostVeth, conf.IPTablesChain); err != nil {
-			return fmt.Errorf("failed to set up iptables for v4: %w", err)
-		}
-
-		ipt, err = iptables.NewWithProtocol(iptables.ProtocolIPv6)
-
-		if err != nil {
-			return fmt.Errorf("failed to set up iptables: %w", err)
-		}
-
-		if err := setUpIPTables(ipt, hostVeth, conf.IPTablesChain); err != nil {
-			return fmt.Errorf("failed to set up iptables for v4: %w", err)
+			return fmt.Errorf("manipulating iptables in %s netns failed: %w", err)
 		}
 	}
 

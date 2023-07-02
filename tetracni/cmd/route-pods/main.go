@@ -11,13 +11,14 @@ import (
 	bv "github.com/containernetworking/plugins/pkg/utils/buildversion"
 	"github.com/seancfoley/ipaddress-go/ipaddr"
 	"github.com/vishvananda/netlink"
+	"github.com/vishvananda/netns"
 )
 
 func main() {
 	skel.PluginMain(cmdAdd, cmdCheck, cmdDel, version.All, bv.BuildString("hostvrf"))
 }
 
-func findVeth(hostVethName, peerVethName string) (hostVeth, peerVeth *netlink.Veth, err error) {
+func findVeth(hostVethName, peerVethName string, peerNetnsFd int, peerNetnsNetlink *netlink.Handle) (hostVeth, peerVeth *netlink.Veth, err error) {
 	hostVethLink, err := netlink.LinkByName(hostVethName)
 
 	if err != nil {
@@ -30,10 +31,10 @@ func findVeth(hostVethName, peerVethName string) (hostVeth, peerVeth *netlink.Ve
 		return nil, nil, fmt.Errorf("link %s is not veth: %s", hostVethName, hostVethLink.Type())
 	}
 
-	peerVethLink, err := netlink.LinkByName(peerVethName)
+	peerVethLink, err := peerNetnsNetlink.LinkByName(peerVethName)
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to find veth %s: %w", peerVethName, err)
+		return hostVeth, nil, fmt.Errorf("failed to find veth %s: %w", hostVethName, err)
 	}
 
 	peerVeth, ok = peerVethLink.(*netlink.Veth)
@@ -45,8 +46,46 @@ func findVeth(hostVethName, peerVethName string) (hostVeth, peerVeth *netlink.Ve
 	return
 }
 
-func setupVeth(hostVethName, peerVethName string) (hostVeth, peerVeth *netlink.Veth, err error) {
-	hostVeth, peerVeth, err = findVeth(hostVethName, peerVethName)
+func updateVeth(hostVethName, peerVethName string, peerNetnsFd int, peerNetnsNetlink *netlink.Handle) (hostVeth, peerVeth *netlink.Veth, err error) {
+	hostVeth, peerVeth, err = findVeth(hostVethName, peerVethName, peerNetnsFd, peerNetnsNetlink)
+
+	if err != nil && peerVeth == nil {
+		return nil, nil, fmt.Errorf("failed to find veth pairs: %w", err)
+	}
+
+	peerVethLink, err := netlink.LinkByName(peerVethName)
+
+	if err != nil {
+		return hostVeth, nil, fmt.Errorf("failed to find veth %s: %w", hostVethName, err)
+	}
+
+	peerVeth, ok := peerVethLink.(*netlink.Veth)
+
+	if !ok {
+		return nil, nil, fmt.Errorf("link %s is not veth: %s", peerVethName, peerVethLink.Type())
+	}
+
+	if err := netlink.LinkSetNsFd(peerVethLink, peerNetnsFd); err != nil {
+		return nil, nil, fmt.Errorf("failed to set netns for peer veth %s: %w", peerVethName, err)
+	}
+
+	return
+}
+
+func setupVeth(hostVethName, peerVethName, peerNetns string) (hostVeth, peerVeth *netlink.Veth, err error) {
+	ns, err := netns.GetFromName(peerNetns)
+
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to find netns %s: %w", peerNetns, err)
+	}
+
+	peerNetnsNetlink, err := netlink.NewHandleAt(ns)
+
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to find netns %s: %w", peerNetns, err)
+	}
+
+	hostVeth, peerVeth, err = updateVeth(hostVethName, peerVethName, int(ns), peerNetnsNetlink)
 
 	switch {
 	case err == nil:
@@ -63,7 +102,7 @@ func setupVeth(hostVethName, peerVethName string) (hostVeth, peerVeth *netlink.V
 			return nil, nil, fmt.Errorf("faile create a veth %s: %w", hostVethName, err)
 		}
 
-		return findVeth(hostVethName, peerVethName)
+		return updateVeth(hostVethName, peerVethName, int(ns), peerNetnsNetlink)
 	default:
 		return nil, nil, fmt.Errorf("failed to find %s, %s: %w", hostVethName, peerVethName, err)
 	}
@@ -76,7 +115,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	hostVeth, peerVeth, err := setupVeth(conf.HostVeth, conf.PeerVeth)
+	hostVeth, peerVeth, err := setupVeth(conf.HostVeth, conf.PeerVeth, conf.Sandbox)
 
 	if err != nil {
 		return fmt.Errorf("failed to set up veth: %w", err)
@@ -126,7 +165,13 @@ func cmdAdd(args *skel.CmdArgs) error {
 		}
 	}
 
-	if err := setUpFirewall(hostVeth, conf); err != nil {
+	ns, err := netns.GetFromName(conf.Sandbox)
+
+	if err != nil {
+		return fmt.Errorf("failed to find netns %s: %w", conf.Sandbox, err)
+	}
+
+	if err := setUpFirewall(ns, hostVeth, conf); err != nil {
 		return fmt.Errorf("failed to set up firewall: %w", err)
 	}
 
@@ -147,7 +192,19 @@ func cmdCheck(args *skel.CmdArgs) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	_, _, err = findVeth(conf.HostVeth, conf.PeerVeth)
+	ns, err := netns.GetFromName(conf.Sandbox)
+
+	if err != nil {
+		return fmt.Errorf("failed to find netns %s: %w", conf.Sandbox, err)
+	}
+
+	peerNetnsNetlink, err := netlink.NewHandleAt(ns)
+
+	if err != nil {
+		return fmt.Errorf("failed to find netns %s: %w", conf.Sandbox, err)
+	}
+
+	_, _, err = findVeth(conf.HostVeth, conf.PeerVeth, int(ns), peerNetnsNetlink)
 
 	if err != nil {
 		return fmt.Errorf("failed to find veth: %w", err)
