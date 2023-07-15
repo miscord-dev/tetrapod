@@ -34,7 +34,10 @@ hostvrf: bin
 route-pods: bin
 	CGO_ENABLED=0 go build -o ./bin ./tetracni/cmd/route-pods
 
-cni-plugins: tetra-extra-routes tetra-pod-ipam hostvrf route-pods
+nsexec: bin
+	CGO_ENABLED=0 go build -o ./bin ./tetracni/cmd/nsexec
+
+cni-plugins: tetra-extra-routes tetra-pod-ipam hostvrf route-pods nsexec
 
 .PHONY: test
 test: envtest ## Run tests.
