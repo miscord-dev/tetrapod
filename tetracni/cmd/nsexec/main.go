@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 	"os/exec"
 
 	"github.com/containernetworking/cni/pkg/skel"
@@ -51,6 +53,16 @@ func cmd(args *skel.CmdArgs) error {
 
 		cmd.Stdin = bytes.NewReader(args.StdinData)
 
-		return cmd.Run()
+		var buf bytes.Buffer
+		cmd.Stdout = io.MultiWriter(os.Stdout, &buf)
+		cmd.Stderr = io.MultiWriter(os.Stderr, &buf)
+
+		err := cmd.Run()
+
+		if err != nil {
+			return fmt.Errorf("executing plugin failed %s: %w", buf.String(), err)
+		}
+
+		return nil
 	})
 }
