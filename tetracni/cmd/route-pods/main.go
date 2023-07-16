@@ -93,7 +93,7 @@ func setupVeth(hostVethName, peerVethName string, peerNetnsFd int, peerNetnsNetl
 			return nil, nil, fmt.Errorf("faile create a veth %s: %w", hostVethName, err)
 		}
 
-		return updateVeth(hostVethName, peerVethName, int(ns), peerNetnsNetlink)
+		return updateVeth(hostVethName, peerVethName, peerNetnsFd, peerNetnsNetlink)
 	default:
 		return nil, nil, fmt.Errorf("failed to find %s, %s: %w", hostVethName, peerVethName, err)
 	}
