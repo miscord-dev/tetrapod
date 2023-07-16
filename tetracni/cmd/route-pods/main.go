@@ -40,7 +40,7 @@ func findVeth(hostVethName, peerVethName string, peerNetnsFd int, peerNetnsNetli
 	peerVeth, ok = peerVethLink.(*netlink.Veth)
 
 	if !ok {
-		return nil, nil, fmt.Errorf("link %s is not veth: %s", peerVethName, peerVethLink.Type())
+		return hostVeth, nil, fmt.Errorf("link %s is not veth: %s", peerVethName, peerVethLink.Type())
 	}
 
 	return
@@ -49,7 +49,10 @@ func findVeth(hostVethName, peerVethName string, peerNetnsFd int, peerNetnsNetli
 func updateVeth(hostVethName, peerVethName string, peerNetnsFd int, peerNetnsNetlink *netlink.Handle) (hostVeth, peerVeth *netlink.Veth, err error) {
 	hostVeth, peerVeth, err = findVeth(hostVethName, peerVethName, peerNetnsFd, peerNetnsNetlink)
 
-	if err != nil && peerVeth == nil {
+	if err == nil {
+		return hostVeth, peerVeth, nil
+	}
+	if err != nil && hostVeth == nil {
 		return nil, nil, fmt.Errorf("failed to find veth pairs: %w", err)
 	}
 
