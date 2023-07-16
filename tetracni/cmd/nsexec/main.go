@@ -7,7 +7,9 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 
+	"github.com/containernetworking/cni/pkg/invoke"
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
 	"github.com/containernetworking/cni/pkg/version"
@@ -42,14 +44,22 @@ func cmd(args *skel.CmdArgs) error {
 		return err
 	}
 
+	_, _ = nsutil.CreateNamespace(netConf.Sandbox)
+
 	handle, err := netns.GetFromName(netConf.Sandbox)
 
 	if err != nil {
 		return err
 	}
 
+	paths := filepath.SplitList(os.Getenv("CNI_PATH"))
+	pluginPath, err := invoke.FindInPath(netConf.Plugin, paths)
+	if err != nil {
+		return err
+	}
+
 	return nsutil.RunInNamespace(handle, func() error {
-		cmd := exec.Command(netConf.Plugin)
+		cmd := exec.Command(pluginPath)
 
 		cmd.Stdin = bytes.NewReader(args.StdinData)
 
