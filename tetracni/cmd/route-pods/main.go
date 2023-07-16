@@ -75,20 +75,8 @@ func updateVeth(hostVethName, peerVethName string, peerNetnsFd int, peerNetnsNet
 	return
 }
 
-func setupVeth(hostVethName, peerVethName, peerNetns string) (hostVeth, peerVeth *netlink.Veth, err error) {
-	ns, err := netns.GetFromName(peerNetns)
-
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to find netns %s: %w", peerNetns, err)
-	}
-
-	peerNetnsNetlink, err := netlink.NewHandleAt(ns)
-
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to find netns %s: %w", peerNetns, err)
-	}
-
-	hostVeth, peerVeth, err = updateVeth(hostVethName, peerVethName, int(ns), peerNetnsNetlink)
+func setupVeth(hostVethName, peerVethName string, peerNetnsFd int, peerNetnsNetlink *netlink.Handle) (hostVeth, peerVeth *netlink.Veth, err error) {
+	hostVeth, peerVeth, err = updateVeth(hostVethName, peerVethName, peerNetnsFd, peerNetnsNetlink)
 
 	switch {
 	case err == nil:
@@ -118,7 +106,19 @@ func cmdAdd(args *skel.CmdArgs) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	hostVeth, peerVeth, err := setupVeth(conf.HostVeth, conf.PeerVeth, conf.Sandbox)
+	ns, err := netns.GetFromName(conf.Sandbox)
+
+	if err != nil {
+		return fmt.Errorf("failed to find netns %s: %w", conf.Sandbox, err)
+	}
+
+	peerNetnsNetlink, err := netlink.NewHandleAt(ns)
+
+	if err != nil {
+		return fmt.Errorf("failed to find netns %s: %w", conf.Sandbox, err)
+	}
+
+	hostVeth, peerVeth, err := setupVeth(conf.HostVeth, conf.PeerVeth, int(ns), peerNetnsNetlink)
 
 	if err != nil {
 		return fmt.Errorf("failed to set up veth: %w", err)
@@ -130,7 +130,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 			continue
 		}
 
-		link, err := netlink.LinkByName(iface.Name)
+		link, err := peerNetnsNetlink.LinkByName(iface.Name)
 
 		if err != nil {
 			return fmt.Errorf("failed to get link %s: %w", iface.Name, err)
@@ -148,7 +148,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 		return fmt.Errorf("bridge not found")
 	}
 
-	if err := netlink.LinkSetMaster(peerVeth, bridge); err != nil {
+	if err := peerNetnsNetlink.LinkSetMaster(peerVeth, bridge); err != nil {
 		return fmt.Errorf("failed to set master of %s %s: %w", peerVeth.Name, bridge.Name, err)
 	}
 
@@ -168,20 +168,14 @@ func cmdAdd(args *skel.CmdArgs) error {
 		}
 	}
 
-	ns, err := netns.GetFromName(conf.Sandbox)
-
-	if err != nil {
-		return fmt.Errorf("failed to find netns %s: %w", conf.Sandbox, err)
-	}
-
-	if err := setUpFirewall(ns, hostVeth, conf); err != nil {
+	if err := setUpFirewall(ns, peerVeth, conf); err != nil {
 		return fmt.Errorf("failed to set up firewall: %w", err)
 	}
 
 	if err := netlink.LinkSetUp(hostVeth); err != nil {
 		return fmt.Errorf("failed to set %s up: %w", hostVeth.Name, err)
 	}
-	if err := netlink.LinkSetUp(peerVeth); err != nil {
+	if err := peerNetnsNetlink.LinkSetUp(peerVeth); err != nil {
 		return fmt.Errorf("failed to set %s up: %w", peerVeth.Name, err)
 	}
 
