@@ -12,6 +12,7 @@ import (
 type Conf struct {
 	types.NetConf
 
+	Sandbox       string `json:"sandbox"`
 	HostVeth      string `json:"hostVeth"`
 	PeerVeth      string `json:"peerVeth"`
 	Firewall      string `json:"firewall"`

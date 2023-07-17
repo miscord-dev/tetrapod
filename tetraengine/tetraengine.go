@@ -42,23 +42,23 @@ type tetraEngine struct {
 	logger *zap.Logger
 }
 
-func New(ifaceName, vrf string, table uint32, config *Config, logger *zap.Logger) (res TetraEngine, err error) {
+func New(ifaceName, netns string, config *Config, logger *zap.Logger) (res TetraEngine, err error) {
 	engine := &tetraEngine{
 		logger:            logger,
 		reconfigTriggerCh: make(chan struct{}, 1),
 	}
 
-	if err := engine.init(ifaceName, vrf, table, config); err != nil {
+	if err := engine.init(ifaceName, netns, config); err != nil {
 		return nil, fmt.Errorf("failed to init engine: %w", err)
 	}
 
 	return engine, nil
 }
 
-func (e *tetraEngine) init(ifaceName, vrf string, table uint32, config *Config) error {
+func (e *tetraEngine) init(ifaceName, netns string, config *Config) error {
 	var err error
 
-	e.wgEngine, err = wgengine.NewVRF(ifaceName, vrf, table, e.logger.With(zap.String("component", "wgengine")))
+	e.wgEngine, err = wgengine.NewNetns(ifaceName, netns, e.logger.With(zap.String("component", "wgengine")))
 	if err != nil {
 		return fmt.Errorf("failed to set up wgengine: %w", err)
 	}

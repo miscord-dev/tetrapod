@@ -15,6 +15,26 @@ func main() {
 	skel.PluginMain(cmdAdd, cmdCheck, cmdDel, version.All, bv.BuildString("tetra-extra-routes"))
 }
 
+func vrfTable(conf *Conf) (uint32, error) {
+	if conf.VRF == "" {
+		return 0, nil
+	}
+
+	link, err := netlink.LinkByName(conf.VRF)
+
+	if err != nil {
+		return 0, fmt.Errorf("failed to find a VRF: %w", err)
+	}
+
+	vrf, ok := link.(*netlink.Vrf)
+
+	if !ok {
+		return 0, fmt.Errorf("%s is not VRF", conf.VRF)
+	}
+
+	return vrf.Table, nil
+}
+
 func cmdAdd(args *skel.CmdArgs) error {
 	conf, result, err := loadConfig(args.StdinData, args.Args)
 
@@ -53,20 +73,14 @@ func cmdAdd(args *skel.CmdArgs) error {
 		return fmt.Errorf("no veth to route")
 	}
 
-	link, err := netlink.LinkByName(conf.VRF)
+	table, err := vrfTable(conf)
 
 	if err != nil {
-		return fmt.Errorf("failed to find a VRF: %w", err)
-	}
-
-	vrf, ok := link.(*netlink.Vrf)
-
-	if !ok {
-		return fmt.Errorf("%s is not VRF", conf.VRF)
+		return fmt.Errorf("failed to get table index of vrf: %w", err)
 	}
 
 	routes, err := netlink.RouteListFiltered(netlink.FAMILY_ALL, &netlink.Route{
-		Table: int(vrf.Table),
+		Table: int(table),
 	}, netlink.RT_FILTER_TABLE)
 
 	if err != nil {
@@ -94,11 +108,11 @@ func cmdAdd(args *skel.CmdArgs) error {
 		err = netlink.RouteAdd(&netlink.Route{
 			Dst:       cidr,
 			LinkIndex: veth.Index,
-			Table:     int(vrf.Table),
+			Table:     int(table),
 		})
 
 		if err != nil {
-			return fmt.Errorf("failed to add a route for %s to %s: %w", cidr.String(), vrf.Name, err)
+			return fmt.Errorf("failed to add a route for %s to %s: %w", cidr.String(), conf.VRF, err)
 		}
 	}
 
@@ -143,20 +157,14 @@ func cmdCheck(args *skel.CmdArgs) error {
 		return fmt.Errorf("no veth to route")
 	}
 
-	link, err := netlink.LinkByName(conf.VRF)
+	table, err := vrfTable(conf)
 
 	if err != nil {
-		return fmt.Errorf("failed to find a VRF: %w", err)
-	}
-
-	vrf, ok := link.(*netlink.Vrf)
-
-	if !ok {
-		return fmt.Errorf("%s is not VRF", conf.VRF)
+		return fmt.Errorf("failed to get table index of vrf: %w", err)
 	}
 
 	routes, err := netlink.RouteListFiltered(netlink.FAMILY_ALL, &netlink.Route{
-		Table: int(vrf.Table),
+		Table: int(table),
 	}, netlink.RT_FILTER_TABLE)
 
 	if err != nil {

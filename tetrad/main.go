@@ -144,7 +144,7 @@ func main() {
 		config.Wireguard.PrivateKey = privKey.String()
 	}
 
-	engine, err := tetraengine.New(config.Wireguard.Name, config.Wireguard.VRF, uint32(config.Wireguard.Table), &tetraengine.Config{
+	engine, err := tetraengine.New(config.Wireguard.Name, config.Wireguard.Netns, &tetraengine.Config{
 		PrivateKey:   config.Wireguard.PrivateKey,
 		ListenPort:   config.Wireguard.ListenPort,
 		STUNEndpoint: config.Wireguard.STUNEndpoint,

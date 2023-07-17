@@ -34,7 +34,10 @@ hostvrf: bin
 route-pods: bin
 	CGO_ENABLED=0 go build -o ./bin ./tetracni/cmd/route-pods
 
-cni-plugins: tetra-extra-routes tetra-pod-ipam hostvrf route-pods
+nsexec: bin
+	CGO_ENABLED=0 go build -o ./bin ./tetracni/cmd/nsexec
+
+cni-plugins: tetra-extra-routes tetra-pod-ipam hostvrf route-pods nsexec
 
 .PHONY: test
 test: envtest ## Run tests.
@@ -44,3 +47,16 @@ test: envtest ## Run tests.
 envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
 $(ENVTEST): $(LOCALBIN)
 	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+
+.PHONY: install-cnitools
+install-cnitools:
+	GOBIN=$(PWD)/bin go install github.com/containernetworking/cni/cnitool@latest
+	( \
+		rm -rf plugins; \
+		git clone https://github.com/containernetworking/plugins.git && \
+		cd plugins && \
+		./build_linux.sh && \
+		mv ./bin/* ../bin && \
+		cd .. && \
+		rm -rf plugins \
+	)
