@@ -19,12 +19,12 @@ RUN apt-get update && \
 FROM zigdownloader-${BUILDARCH} AS zigdownloader
 
 # Prepare for targetarch amd64
-FROM --platform=$BUILDPLATFORM golang:1.19 AS gobase-amd64
+FROM --platform=$BUILDPLATFORM golang:1.20 AS gobase-amd64
 
 ENV ZIGTARGET x86_64-linux-gnu
 
 # Prepare for targetarch arm64
-FROM --platform=$BUILDPLATFORM golang:1.19 AS gobase-arm64
+FROM --platform=$BUILDPLATFORM golang:1.20 AS gobase-arm64
 
 ENV ZIGTARGET aarch64-linux-gnu
 
