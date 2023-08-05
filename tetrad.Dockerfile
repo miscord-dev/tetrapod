@@ -1,5 +1,5 @@
 # Download zig for builarch amd64
-FROM --platform=$BUILDPLATFORM golang:1.19 AS zigdownloader-amd64
+FROM --platform=$BUILDPLATFORM golang:1.20 AS zigdownloader-amd64
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends xz-utils && \
@@ -8,7 +8,7 @@ RUN apt-get update && \
     mv ./zig-*/ /zig/
 
 # Download zig for builarch arm64
-FROM --platform=$BUILDPLATFORM golang:1.19 AS zigdownloader-arm64
+FROM --platform=$BUILDPLATFORM golang:1.20 AS zigdownloader-arm64
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends xz-utils && \
@@ -73,7 +73,7 @@ COPY Makefile Makefile
 RUN GOOS=linux GOARCH=${TARGETARCH} make cni-plugins
 
 # Fetch CNI plugins
-FROM golang:1.19 AS plugins
+FROM golang:1.20 AS plugins
 
 WORKDIR /workspace
 COPY aqua.yaml aqua.yaml
