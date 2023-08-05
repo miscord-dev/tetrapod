@@ -3,7 +3,7 @@ FROM --platform=$BUILDPLATFORM golang:1.19 AS zigdownloader-amd64
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends xz-utils && \
-    curl -LO https://ziglang.org/download/0.10.1/zig-linux-x86_64-0.10.1.tar.xz && \
+    curl -LO https://ziglang.org/download/0.11.0/zig-linux-x86_64-0.11.0.tar.xz && \
     tar xf zig-*.tar.xz && \
     mv ./zig-*/ /zig/
 
@@ -12,7 +12,7 @@ FROM --platform=$BUILDPLATFORM golang:1.19 AS zigdownloader-arm64
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends xz-utils && \
-    curl -LO https://ziglang.org/download/0.10.1/zig-linux-aarch64-0.10.1.tar.xz && \
+    curl -LO https://ziglang.org/download/0.11.0/zig-linux-aarch64-0.11.0.tar.xz && \
     tar xf zig-*.tar.xz && \
     mv ./zig-*/ /zig/
 
