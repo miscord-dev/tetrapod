@@ -1,12 +1,12 @@
 module github.com/miscord-dev/tetrapod
 
-go 1.21
+go 1.21.0
 
 toolchain go1.22.1
 
 require (
 	github.com/cenkalti/backoff/v4 v4.2.1
-	github.com/cilium/ebpf v0.12.2
+	github.com/cilium/ebpf v0.13.2
 	github.com/containernetworking/cni v1.1.2
 	github.com/containernetworking/plugins v1.4.1
 	github.com/coreos/go-iptables v0.7.0
@@ -75,7 +75,7 @@ require (
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
-	github.com/rogpeppe/go-internal v1.10.0 // indirect
+	github.com/rogpeppe/go-internal v1.11.0 // indirect
 	github.com/safchain/ethtool v0.3.0 // indirect
 	github.com/seancfoley/bintree v1.2.3 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
