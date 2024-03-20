@@ -17,7 +17,7 @@ require (
 	github.com/mdlayher/netlink v1.7.2
 	github.com/onsi/ginkgo/v2 v2.13.0
 	github.com/onsi/gomega v1.29.0
-	github.com/pion/stun v0.6.0
+	github.com/pion/stun v0.6.1
 	github.com/seancfoley/ipaddress-go v1.5.5
 	github.com/vishvananda/netlink v1.2.1-beta.2
 	github.com/vishvananda/netns v0.0.4
@@ -77,7 +77,7 @@ require (
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/safchain/ethtool v0.0.0-20210803160452-9aa261dae9b1 // indirect
-	github.com/seancfoley/bintree v1.1.0 // indirect
+	github.com/seancfoley/bintree v1.2.3 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/mod v0.14.0 // indirect
