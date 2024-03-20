@@ -3,7 +3,7 @@ module github.com/miscord-dev/tetrapod
 go 1.20
 
 require (
-	github.com/cenkalti/backoff/v4 v4.2.0
+	github.com/cenkalti/backoff/v4 v4.2.1
 	github.com/cilium/ebpf v0.12.2
 	github.com/containernetworking/cni v1.1.2
 	github.com/containernetworking/plugins v1.1.1
