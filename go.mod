@@ -1,8 +1,6 @@
 module github.com/miscord-dev/tetrapod
 
-go 1.21.0
-
-toolchain go1.22.1
+go 1.22.1
 
 require (
 	github.com/cenkalti/backoff/v4 v4.2.1
