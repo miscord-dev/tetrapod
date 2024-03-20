@@ -23,7 +23,7 @@ require (
 	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.21.0
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
-	golang.org/x/net v0.21.0
+	golang.org/x/net v0.22.0
 	golang.org/x/sync v0.6.0
 	golang.org/x/sys v0.18.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20230215201556-9c5414ab4bde
