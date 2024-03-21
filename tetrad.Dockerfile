@@ -88,7 +88,7 @@ RUN wget https://github.com/aquaproj/aqua/releases/latest/download/aqua_linux_$(
     cp $(aqua which bridge) /plugins/ && \
     cp $(aqua which host-local) /plugins/
 
-FROM debian:bullseye
+FROM debian:bookworm
 
 WORKDIR /
 COPY tetracni/cni /config
