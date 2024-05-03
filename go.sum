@@ -293,6 +293,8 @@ github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0 h1:jWpvCLoY8Z/e3VKvls
 github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0/go.mod h1:QUyp042oQthUoa9bqDv0ER0wrtXnBruoNd7aNjkbP+k=
 github.com/mdlayher/genetlink v1.2.0 h1:4yrIkRV5Wfk1WfpWTcoOlGmsWgQj3OtQN9ZsbrE+XtU=
 github.com/mdlayher/genetlink v1.2.0/go.mod h1:ra5LDov2KrUCZJiAtEvXXZBxGMInICMXIwshlJ+qRxQ=
+github.com/mdlayher/genetlink v1.3.2 h1:KdrNKe+CTu+IbZnm/GVUMXSqBBLqcGpRDa0xkQy56gw=
+github.com/mdlayher/genetlink v1.3.2/go.mod h1:tcC3pkCrPUGIKKsCsp0B3AdaaKuHtaxoJRz3cc+528o=
 github.com/mdlayher/netlink v1.6.0/go.mod h1:0o3PlBmGst1xve7wQ7j/hwpNaFaH4qCRyWCdcZk8/vA=
 github.com/mdlayher/netlink v1.6.2 h1:D2zGSkvYsJ6NreeED3JiVTu1lj2sIYATqSaZlhPzUgQ=
 github.com/mdlayher/netlink v1.6.2/go.mod h1:O1HXX2sIWSMJ3Qn1BYZk1yZM+7iMki/uYGGiwGyq/iU=
@@ -801,8 +803,12 @@ golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543/go.mod h1:I/5z698sn9Ka8T
 golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 golang.zx2c4.com/wireguard v0.0.0-20220920152132-bb719d3a6e2c h1:Okh6a1xpnJslG9Mn84pId1Mn+Q8cvpo4HCeeFWHo0cA=
 golang.zx2c4.com/wireguard v0.0.0-20220920152132-bb719d3a6e2c/go.mod h1:enML0deDxY1ux+B6ANGiwtg0yAJi1rctkTpcHNAVPyg=
+golang.zx2c4.com/wireguard v0.0.0-20230325221338-052af4a8072b h1:J1CaxgLerRR5lgx3wnr6L04cJFbWoceSK9JWBdglINo=
+golang.zx2c4.com/wireguard v0.0.0-20230325221338-052af4a8072b/go.mod h1:tqur9LnfstdR9ep2LaJT4lFUl0EjlHtge+gAjmsHUG4=
 golang.zx2c4.com/wireguard/wgctrl v0.0.0-20230215201556-9c5414ab4bde h1:ybF7AMzIUikL9x4LgwEmzhXtzRpKNqngme1VGDWz+Nk=
 golang.zx2c4.com/wireguard/wgctrl v0.0.0-20230215201556-9c5414ab4bde/go.mod h1:mQqgjkW8GQQcJQsbBvK890TKqUK1DfKWkuBGbOkuMHQ=
+golang.zx2c4.com/wireguard/wgctrl v0.0.0-20230429144221-925a1e7659e6 h1:CawjfCvYQH2OU3/TnxLx97WDSUDRABfT18pCOYwc2GE=
+golang.zx2c4.com/wireguard/wgctrl v0.0.0-20230429144221-925a1e7659e6/go.mod h1:3rxYc4HtVcSG9gVaTs2GEBdehh+sYPOwKtyUWEOTb80=
 gomodules.xyz/jsonpatch/v2 v2.2.0 h1:4pT439QV83L+G9FkcCriY6EkpcK6r6bK+A5FBUMI7qY=
 gomodules.xyz/jsonpatch/v2 v2.2.0/go.mod h1:WXp+iVDkoLQqPudfQ9GBlwB2eZ5DKOnjQZCYdOS8GPY=
 gomodules.xyz/jsonpatch/v2 v2.4.0 h1:Ci3iUJyx9UeRx7CeFN8ARgGbkESwJK+KB9lLcWxY/Zw=
