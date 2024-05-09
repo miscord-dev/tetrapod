@@ -15,7 +15,7 @@ require (
 	github.com/mdlayher/netlink v1.7.2
 	github.com/onsi/ginkgo/v2 v2.17.2
 	github.com/onsi/gomega v1.33.1
-	github.com/pion/stun v0.6.1
+	github.com/pion/stun/v2 v2.0.0
 	github.com/seancfoley/ipaddress-go v1.5.5
 	github.com/vishvananda/netlink v1.2.1-beta.2
 	github.com/vishvananda/netns v0.0.4
