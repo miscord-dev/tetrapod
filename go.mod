@@ -16,7 +16,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.20.0
 	github.com/onsi/gomega v1.34.1
 	github.com/pion/stun v0.6.1
-	github.com/seancfoley/ipaddress-go v1.5.5
+	github.com/seancfoley/ipaddress-go v1.6.0
 	github.com/vishvananda/netlink v1.2.1-beta.2
 	github.com/vishvananda/netns v0.0.4
 	go.uber.org/atomic v1.11.0
