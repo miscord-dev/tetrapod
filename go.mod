@@ -6,7 +6,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/cilium/ebpf v0.19.0
 	github.com/containernetworking/cni v1.3.0
-	github.com/containernetworking/plugins v1.5.1
+	github.com/containernetworking/plugins v1.8.0
 	github.com/coreos/go-iptables v0.7.0
 	github.com/go-logr/zapr v1.3.0
 	github.com/golang/mock v1.6.0
