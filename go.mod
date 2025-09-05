@@ -14,7 +14,7 @@ require (
 	github.com/google/gopacket v1.1.20-0.20220810144506-32ee38206866
 	github.com/mdlayher/netlink v1.8.0
 	github.com/onsi/ginkgo/v2 v2.25.3
-	github.com/onsi/gomega v1.34.1
+	github.com/onsi/gomega v1.38.2
 	github.com/pion/stun v0.6.1
 	github.com/seancfoley/ipaddress-go v1.6.0
 	github.com/vishvananda/netlink v1.2.1-beta.2
