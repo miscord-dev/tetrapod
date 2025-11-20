@@ -4,7 +4,7 @@ go 1.22.1
 
 require (
 	github.com/cenkalti/backoff/v4 v4.3.0
-	github.com/cilium/ebpf v0.19.0
+	github.com/cilium/ebpf v0.20.0
 	github.com/containernetworking/cni v1.3.0
 	github.com/containernetworking/plugins v1.8.0
 	github.com/coreos/go-iptables v0.8.0
