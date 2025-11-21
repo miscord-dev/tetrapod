@@ -13,7 +13,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/gopacket v1.1.20-0.20220810144506-32ee38206866
 	github.com/mdlayher/netlink v1.8.0
-	github.com/onsi/ginkgo/v2 v2.25.3
+	github.com/onsi/ginkgo/v2 v2.27.2
 	github.com/onsi/gomega v1.38.2
 	github.com/pion/stun v0.6.1
 	github.com/seancfoley/ipaddress-go v1.7.1
