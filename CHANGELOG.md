@@ -1,0 +1,149 @@
+# Changelog
+
+## [v0.0.5](https://github.com/miscord-dev/tetrapod/compare/v0.0.4...v0.0.5) - 2025-11-21
+- Add tagpr by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/77
+- Update module golang.org/x/crypto to v0.7.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/75
+- Update golang.org/x/exp digest to 642cace by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/79
+- Bump Go and deps by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/83
+- Enable automerge by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/84
+- Update module github.com/vishvananda/netns to v0.0.4 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/63
+- Update actions/setup-go action to v4 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/80
+- Update module github.com/pion/stun to v0.6.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/73
+- Update module github.com/cilium/ebpf to v0.10.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/67
+- Update module github.com/onsi/gomega to v1.27.8 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/72
+- Update golang.org/x/exp digest to 2e198f4 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/82
+- Update module github.com/mdlayher/netlink to v1.7.2 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/70
+- Use netns by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/92
+- Use zig 0.11 by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/94
+- Update golang Docker tag to v1.20 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/66
+- Update golang Docker tag to v1.21 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/96
+- Update module github.com/cilium/ebpf to v0.12.2 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/98
+- Update module github.com/cenkalti/backoff/v4 to v4.2.1 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/86
+- Update kubernetes packages to v0.29.3 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/88
+- Update module github.com/seancfoley/ipaddress-go to v1.5.5 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/74
+- Update module go.uber.org/atomic to v1.11.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/90
+- Update module github.com/pion/stun to v0.6.1 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/99
+- Update golang Docker tag to v1.22 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/100
+- Update module github.com/go-logr/zapr to v1.3.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/87
+- Update module golang.org/x/sync to v0.6.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/91
+- Update module github.com/containernetworking/plugins to v1.4.1 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/69
+- Update module github.com/onsi/ginkgo/v2 to v2.17.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/71
+- Update module github.com/cilium/ebpf to v0.13.2 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/101
+- Update module github.com/onsi/gomega to v1.32.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/102
+- Update dependency go to v1.22.1 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/103
+- Update module go.uber.org/zap to v1.27.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/104
+- Update module golang.org/x/crypto to v0.21.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/105
+- Update module golang.org/x/net to v0.22.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/106
+- Update module sigs.k8s.io/controller-runtime to v0.17.2 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/107
+- Update module github.com/onsi/ginkgo/v2 to v2.17.2 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/116
+- Update module golang.org/x/exp to v0.0.0-20240416160154-fe59bbe5cc7f by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/117
+- Update module github.com/onsi/gomega to v1.33.1 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/118
+- Update module golang.zx2c4.com/wireguard/wgctrl to v0.0.0-20230429144221-925a1e7659e6 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/119
+- Update kubernetes packages to v0.30.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/120
+- Update module github.com/cenkalti/backoff/v4 to v4.3.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/121
+- Update module github.com/cilium/ebpf to v0.15.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/122
+- Update module github.com/containernetworking/cni to v1.2.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/123
+- Update module sigs.k8s.io/controller-runtime to v0.18.1 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/124
+- Update kubernetes packages to v0.30.3 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/128
+- Update module github.com/containernetworking/cni to v1.2.3 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/129
+- Update module sigs.k8s.io/controller-runtime to v0.18.5 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/130
+- Update module github.com/cilium/ebpf to v0.16.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/131
+- Update module github.com/containernetworking/plugins to v1.5.1 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/132
+- Update module github.com/onsi/ginkgo/v2 to v2.20.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/133
+- Update module github.com/onsi/gomega to v1.34.1 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/134
+- Update module github.com/seancfoley/ipaddress-go to v1.6.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/135
+- Update module golang.org/x/crypto to v0.26.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/136
+- Update module golang.org/x/net to v0.28.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/137
+- Update kubernetes packages to v0.31.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/138
+- Update module golang.org/x/sync to v0.8.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/139
+- Update golang Docker tag to v1.23 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/140
+- Update module golang.org/x/sys to v0.24.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/141
+- Update module github.com/vishvananda/netns to v0.0.5 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/145
+- Update golang Docker tag to v1.25 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/146
+- Update kubernetes packages to v0.34.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/147
+- Update module github.com/cilium/ebpf to v0.19.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/148
+- Update module github.com/containernetworking/cni to v1.3.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/149
+- Update module github.com/containernetworking/plugins to v1.8.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/150
+- Update module github.com/coreos/go-iptables to v0.8.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/151
+- Update module github.com/google/go-cmp to v0.7.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/152
+- Update module github.com/mdlayher/netlink to v1.8.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/153
+- Update module github.com/onsi/ginkgo/v2 to v2.25.3 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/154
+- Update module github.com/onsi/gomega to v1.38.2 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/155
+- Update module github.com/seancfoley/ipaddress-go to v1.7.1 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/156
+- Update module github.com/vishvananda/netlink to v1.3.1 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/157
+- Update module golang.org/x/crypto to v0.41.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/158
+- Update module golang.org/x/net to v0.43.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/159
+- Update module golang.org/x/sync to v0.16.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/160
+- Update module golang.org/x/sys to v0.35.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/161
+- Update module sigs.k8s.io/controller-runtime to v0.22.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/162
+- Update kubernetes packages to v0.34.1 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/164
+- Update module sigs.k8s.io/controller-runtime to v0.22.3 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/165
+- Update kubernetes packages to v0.34.2 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/166
+- Update module go.uber.org/zap to v1.27.1 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/167
+- Update module sigs.k8s.io/controller-runtime to v0.22.4 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/168
+- Update module github.com/cilium/ebpf to v0.20.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/169
+- Update module github.com/onsi/ginkgo/v2 to v2.27.2 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/170
+- Update module golang.org/x/crypto to v0.45.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/171
+- Update module golang.org/x/net to v0.47.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/172
+- Update module golang.org/x/sync to v0.18.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/173
+- Update module golang.org/x/sys to v0.38.0 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/174
+
+## [v0.0.4](https://github.com/miscord-dev/tetrapod/compare/v0.0.3...v0.0.4) - 2023-03-15
+- Configure Renovate by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/51
+- Update golang.org/x/exp digest to 522b1b5 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/55
+- Update golang.zx2c4.com/wireguard/wgctrl digest to 9c5414a by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/56
+- Fix bugs by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/62
+- Update kubernetes packages to v0.26.2 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/60
+- Update module sigs.k8s.io/controller-runtime to v0.14.5 by @renovate[bot] in https://github.com/miscord-dev/tetrapod/pull/64
+- Add TETRAPOD_CNI_POD_TEMPLATES, TETRAPOD_CNI_ENABLE_EXTRA_CLAIMS by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/65
+- Add tetrapod_clients.yaml by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/76
+
+## [v0.0.3](https://github.com/miscord-dev/tetrapod/compare/v0.0.2...v0.0.3) - 2023-03-11
+- Use zig to cross compile Docker images by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/53
+
+## [v0.0.2](https://github.com/miscord-dev/tetrapod/compare/v0.0.1...v0.0.2) - 2023-03-11
+- tetrad config optional by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/52
+
+## [v0.0.1](https://github.com/miscord-dev/tetrapod/commits/v0.0.1) - 2023-03-06
+- Feature/ci by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/2
+- Add pronounce of "toxfu" by @musaprg in https://github.com/miscord-dev/tetrapod/pull/3
+- Feature/w/o tailscale by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/8
+- Rename toxfu to tetrapod by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/10
+- Add workflow to build images by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/11
+- Fix workflow by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/12
+- Fix config by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/13
+- Fix bugs by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/14
+- fix config by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/15
+- fix config by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/16
+- fix config by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/17
+- Make tetrad.Dockerfile build time faster by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/18
+- fix config by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/19
+- fix config by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/20
+- fix config by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/21
+- fix config by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/22
+- Add a route-pods plugin to configure routes to pods from host by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/23
+- add route pods cni plugin by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/24
+- add route pods cni plugin by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/25
+- add route pods cni plugin by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/26
+- add route pods cni plugin by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/27
+- add route pods cni plugin by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/28
+- add route pods cni plugin by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/29
+- add route pods cni plugin by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/30
+- add route pods cni plugin by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/31
+- add route pods cni plugin by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/32
+- add route pods cni plugin by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/33
+- add route pods cni plugin by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/34
+- add route pods cni plugin by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/35
+- add route pods cni plugin by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/36
+- set controller ref by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/37
+- print additional fields by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/38
+- optional vrf by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/39
+- Fix bugs by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/40
+- optional vrf by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/41
+- optional vrf by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/42
+- optional vrf by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/43
+- do not break nat table by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/44
+- Fix MTU to 1280 by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/45
+- Add logo files by @musaprg in https://github.com/miscord-dev/tetrapod/pull/46
+- Release yaml on new release by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/49
+- release files by @tsuzu in https://github.com/miscord-dev/tetrapod/pull/50
